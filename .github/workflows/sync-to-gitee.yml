@@ -15,9 +15,9 @@ jobs:
       - name: Sync GitHub to Gitee
         uses: NEVSTOP-LAB/GitHub-Gitee-Sync@main
         with:
-          github-owner: NEVSTOP-LAB
+          github-owner: nevstop
           github-token: ${{ secrets.SYNC_GITHUB_TOKEN }}
-          gitee-owner: NEVSTOP-LAB
+          gitee-owner: nevstop
           gitee-token: ${{ secrets.SYNC_GITEE_TOKEN }}
           sync-extra: 'releases,wiki'
           show-private-repo-names: 8
