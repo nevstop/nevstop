@@ -1,0 +1,24 @@
+name: Sync GitHub to Gitee
+
+on:
+  schedule:
+    - cron: '0 20 * * *'   # 每天北京时间 4:00 自动同步 (UTC 20:00)
+  workflow_dispatch:        # 支持手动触发
+
+concurrency:
+  group: sync-github-to-gitee
+  cancel-in-progress: true
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync GitHub to Gitee
+        uses: NEVSTOP-LAB/GitHub-Gitee-Sync@main
+        with:
+          github-owner: NEVSTOP-LAB
+          github-token: ${{ secrets.SYNC_GITHUB_TOKEN }}
+          gitee-owner: NEVSTOP-LAB
+          gitee-token: ${{ secrets.SYNC_GITEE_TOKEN }}
+          sync-extra: 'releases,wiki'
+          show-private-repo-names: 8
+          direction: github2gitee
