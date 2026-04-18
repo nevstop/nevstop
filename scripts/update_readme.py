@@ -14,6 +14,10 @@ GITHUB_USER = "nevstop"
 GITHUB_ORGS = ["NEVSTOP-LAB"]
 README_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "README.md")
 
+MAX_EVENT_PAGES = 3       # pages of GitHub Events API to scan for commits
+MAX_DESC_LENGTH = 65      # max description chars in repo list; longer ones are truncated
+_TRUNCATE_SUFFIX_LEN = 3  # length of "..." appended after truncation
+
 # Beijing Time (UTC+8)
 BJT = timezone(timedelta(hours=8))
 
@@ -123,7 +127,7 @@ def get_yesterday_commits():
     day_end = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
 
     commit_count = 0
-    for page in range(1, 4):  # up to 3 pages
+    for page in range(1, MAX_EVENT_PAGES + 1):
         events = github_api(
             f"https://api.github.com/users/{GITHUB_USER}/events"
             f"?per_page=100&page={page}"
@@ -220,8 +224,8 @@ def generate_repos_section(repos):
         url = html_escape(r["html_url"])
         stars = r.get("stargazers_count", 0)
         desc = r.get("description") or ""
-        if len(desc) > 65:
-            desc = desc[:62] + "..."
+        if len(desc) > MAX_DESC_LENGTH:
+            desc = desc[:MAX_DESC_LENGTH - _TRUNCATE_SUFFIX_LEN] + "..."
         medal = medals[i] if i < len(medals) else f"{i + 1}."
         line = f"{medal} **[{full_name}]({url})** ⭐ {stars}"
         if desc:
