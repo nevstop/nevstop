@@ -3,6 +3,7 @@
 
 import json
 import os
+import random
 import re
 import urllib.error
 import urllib.request
@@ -17,30 +18,75 @@ README_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "README.m
 BJT = timezone(timedelta(hours=8))
 
 # ── ASCII Cat Art ───────────────────────────────────────────────────────────
+# Each entry: (face_line, status_message_template)
+# {n} in status will be replaced with the commit count.
+# The face_line goes into the <pre> block (ASCII-only, no emoji / CJK).
+# The status message is rendered outside the <pre> block as normal text.
 
-CAT_IDLE = r"""
-    /\_/\
-   ( -.- )  zzZ
-    > ^ <
-   /|   |\
-  (_|   |_)
-"""
+_CATS_IDLE = [
+    ("( -.- )  zzzZ", "💤 摸鱼模式 | 昨天没有提交代码哦~"),
+    ("( =.= )  ....", "💤 摸鱼模式 | 进入低功耗模式~"),
+    ("( u.u )  ~~~",  "😴 摸鱼模式 | 悄悄打了个盹~"),
+    ("( -.o )  Zzz",  "💤 摸鱼模式 | 半梦半醒中~"),
+    ("( ~.~ )  zZ",   "🌙 摸鱼模式 | 与星星作伴中~"),
+    ("( T_T )  ...",  "😢 摸鱼模式 | 今天没有产出..."),
+]
 
-CAT_FOCUS = r"""
-    /\_/\
-   ( •_• )  ✧
-    > ^ <
-   /|   |\
-  (_|   |_)
-"""
+_CATS_LIGHT = [
+    ("( ^.^ )  ~  ",  "🌱 轻松模式 | 昨天提交了 {n} 个 commit"),
+    ("( o.o )  ?  ",  "🤔 好奇模式 | 昨天提交了 {n} 个 commit"),
+    ("( >.o )     ",  "😌 稳健模式 | 昨天提交了 {n} 个 commit"),
+    ("( *_* )  !  ",  "✨ 活力模式 | 昨天提交了 {n} 个 commit"),
+    ("( ^_^ )  :) ",  "😊 开心模式 | 昨天提交了 {n} 个 commit"),
+    ("( o_o )  >> ",  "👀 认真模式 | 昨天提交了 {n} 个 commit"),
+]
 
-CAT_CRAZY = r"""
-    /\_/\
-   ( @_@ )  !!!
-    > ^ <
-   /|   |\
-  (_|   |_)
-"""
+_CATS_FOCUS = [
+    ("( o_o )  ** ",  "💻 专注模式 | 昨天提交了 {n} 个 commit"),
+    ("( >_< )  !! ",  "🎯 冲刺模式 | 昨天提交了 {n} 个 commit"),
+    ("( *_* )  ** ",  "🌟 高效模式 | 昨天提交了 {n} 个 commit"),
+    ("( >_> )     ",  "👊 干劲模式 | 昨天提交了 {n} 个 commit"),
+    ("( 0_0 )  >> ",  "🔍 钻研模式 | 昨天提交了 {n} 个 commit"),
+    ("( ^_^ )  !  ",  "😎 自信模式 | 昨天提交了 {n} 个 commit"),
+]
+
+_CATS_HEAVY = [
+    ("( @_@ )  !!!",  "🔥 疯狂加班 | 昨天提交了 {n} 个 commit！"),
+    ("( O_O )  !! ",  "😱 震撼模式 | 昨天提交了 {n} 个 commit！"),
+    ("( x_x )  +  ",  "💥 超载模式 | 昨天提交了 {n} 个 commit！"),
+    ("( >_< )     ",  "😤 爆发模式 | 昨天提交了 {n} 个 commit！"),
+    ("( #_# )  ~~ ",  "🚀 飞速模式 | 昨天提交了 {n} 个 commit！"),
+    ("( $_$ )  !! ",  "💰 黄金模式 | 昨天提交了 {n} 个 commit！"),
+]
+
+_CATS_ULTRA = [
+    ("( @_@ ) !!!",   "🌋 传说级加班 | 昨天提交了 {n} 个 commit！！"),
+    ("( ~_~ ) ...",   "🏆 超神模式 | 昨天提交了 {n} 个 commit！！"),
+    ("( ^o^ ) !!!",   "🎆 疯狂模式 | 昨天提交了 {n} 个 commit！！"),
+    ("( X_X )  ##",   "💀 极限模式 | 昨天提交了 {n} 个 commit！！"),
+    ("( *_* ) ***",   "⚡ 闪电模式 | 昨天提交了 {n} 个 commit！！"),
+    ("( 0_0 )  !!",   "🎯 传说级  | 昨天提交了 {n} 个 commit！！"),
+]
+
+
+def _cat_body(face_line):
+    """Return a 5-line ASCII cat body (no emoji, no CJK)."""
+    return "\n".join([
+        "    /\\_/\\",
+        f"   {face_line}",
+        "    > ^ <",
+        "   /|   |\\",
+        "  (_|   |_)",
+    ])
+
+
+def _pick_cat(cats, commit_count, today):
+    """Pick a cat deterministically for the given day."""
+    rng = random.Random(today.toordinal())
+    face_line, msg_tpl = rng.choice(cats)
+    body = _cat_body(face_line)
+    msg = msg_tpl.format(n=commit_count)
+    return body, msg
 
 
 # ── GitHub API Helper ───────────────────────────────────────────────────────
@@ -145,44 +191,43 @@ def get_top_repos(n=5):
 # ── Section Generators ──────────────────────────────────────────────────────
 
 
-def generate_cat_section(commit_count):
-    """Build the <pre> block with the appropriate cat and status message."""
-    if commit_count == 0:
-        cat = CAT_IDLE
-        msg = "💤 摸鱼模式 | 昨天没有提交代码哦~"
-    elif commit_count <= 5:
-        cat = CAT_FOCUS
-        msg = f"💻 专注模式 | 昨天提交了 {commit_count} 个 commit"
-    else:
-        cat = CAT_CRAZY
-        msg = f"🔥 疯狂加班 | 昨天提交了 {commit_count} 个 commit！"
+def generate_cat_section(commit_count, today=None):
+    """Build the cat <pre> block + status line for the given commit count."""
+    if today is None:
+        today = datetime.now(BJT).date()
 
-    return f"<pre>\n{cat}\n{msg}\n</pre>"
+    if commit_count == 0:
+        cats = _CATS_IDLE
+    elif commit_count <= 3:
+        cats = _CATS_LIGHT
+    elif commit_count <= 8:
+        cats = _CATS_FOCUS
+    elif commit_count <= 15:
+        cats = _CATS_HEAVY
+    else:
+        cats = _CATS_ULTRA
+
+    body, msg = _pick_cat(cats, commit_count, today)
+    return f"<pre>\n{body}\n</pre>\n\n{msg}"
 
 
 def generate_repos_section(repos):
-    """Build pin-card HTML for the top repos (2 per row)."""
+    """Build a markdown list for the top repos."""
+    medals = ["🥇", "🥈", "🥉", "4.", "5."]
     lines = []
-    for i in range(0, len(repos), 2):
-        row_parts = []
-        for j in range(2):
-            if i + j < len(repos):
-                r = repos[i + j]
-                owner = html_escape(r["full_name"].split("/")[0])
-                name = html_escape(r["name"])
-                url = html_escape(r["html_url"])
-                card = (
-                    f"https://github-readme-stats.vercel.app/api/pin/"
-                    f"?username={owner}&repo={name}"
-                    f"&theme=tokyonight&show_owner=true"
-                )
-                row_parts.append(
-                    f'<a href="{url}">'
-                    f'<img src="{card}" />'
-                    f"</a>"
-                )
-        lines.append(" ".join(row_parts))
-    return "\n".join(lines)
+    for i, r in enumerate(repos):
+        full_name = html_escape(r["full_name"])
+        url = html_escape(r["html_url"])
+        stars = r.get("stargazers_count", 0)
+        desc = r.get("description") or ""
+        if len(desc) > 65:
+            desc = desc[:62] + "..."
+        medal = medals[i] if i < len(medals) else f"{i + 1}."
+        line = f"{medal} **[{full_name}]({url})** ⭐ {stars}"
+        if desc:
+            line += f"  \n   {desc}"
+        lines.append(line)
+    return "\n\n".join(lines)
 
 
 # ── README Updater ──────────────────────────────────────────────────────────
@@ -197,14 +242,15 @@ def replace_section(content, tag, replacement):
 def main():
     commit_count = get_yesterday_commits()
     top_repos = get_top_repos(5)
+    today = datetime.now(BJT).date()
 
     with open(README_PATH, "r", encoding="utf-8") as f:
         content = f.read()
 
     # Update ASCII cat
-    content = replace_section(content, "CAT", generate_cat_section(commit_count))
+    content = replace_section(content, "CAT", generate_cat_section(commit_count, today))
 
-    # Update top repos
+    # Update top repos list
     content = replace_section(content, "REPOS", generate_repos_section(top_repos))
 
     # Update timestamp
