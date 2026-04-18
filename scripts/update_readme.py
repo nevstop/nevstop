@@ -4,8 +4,10 @@
 import json
 import os
 import re
+import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
+from html import escape as html_escape
 
 GITHUB_USER = "nevstop"
 GITHUB_ORGS = ["NEVSTOP-LAB"]
@@ -51,8 +53,17 @@ def github_api(url):
     if token:
         headers["Authorization"] = f"token {token}"
     req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        print(f"⚠️  GitHub API error {exc.code} for {url}: {exc.reason}")
+        if exc.code == 403:
+            print("   Hint: this may be a rate-limit issue — check GITHUB_TOKEN")
+        return [] if "repos" in url or "events" in url else {}
+    except urllib.error.URLError as exc:
+        print(f"⚠️  Network error for {url}: {exc.reason}")
+        return [] if "repos" in url or "events" in url else {}
 
 
 # ── Commit Counting ────────────────────────────────────────────────────────
@@ -89,12 +100,18 @@ def get_yesterday_commits():
 # ── Top Repos ───────────────────────────────────────────────────────────────
 
 
+def _append_params(url, params):
+    """Append query parameters to a URL."""
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}{params}"
+
+
 def _fetch_all_repos(url):
     """Paginate through a GitHub list endpoint."""
     repos = []
     page = 1
     while True:
-        data = github_api(f"{url}{'&' if '?' in url else '?'}per_page=100&page={page}")
+        data = github_api(_append_params(url, f"per_page=100&page={page}"))
         if not data:
             break
         repos.extend(data)
@@ -151,9 +168,9 @@ def generate_repos_section(repos):
         for j in range(2):
             if i + j < len(repos):
                 r = repos[i + j]
-                owner = r["full_name"].split("/")[0]
-                name = r["name"]
-                url = r["html_url"]
+                owner = html_escape(r["full_name"].split("/")[0])
+                name = html_escape(r["name"])
+                url = html_escape(r["html_url"])
                 card = (
                     f"https://github-readme-stats.vercel.app/api/pin/"
                     f"?username={owner}&repo={name}"
