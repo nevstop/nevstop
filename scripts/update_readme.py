@@ -128,17 +128,17 @@ def _cat_svg(expression, width=180, mini=False, with_phone=False):
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="{width}" '
         f'fill="none" stroke="currentColor" stroke-width="{stroke_w}" '
-        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-        '<path d="M52 26 L66 12 L72 30"/>'
-        '<path d="M88 30 L94 12 L108 26"/>'
-        '<circle cx="80" cy="48" r="26"/>'
-        f"{eye}{mouth}"
-        '<path d="M80 70 L80 100"/>'
-        '<path d="M60 84 Q80 96 100 84"/>'
-        '<path d="M52 102 Q44 112 34 104 Q28 98 34 92"/>'
-        '<path d="M68 104 L62 112"/>'
-        '<path d="M92 104 L98 112"/>'
-        f"{phone}</svg>"
+        'stroke-linecap="round" stroke-linejoin="round" role="presentation" aria-hidden="true">\n'
+        '<path d="M52 26 L66 12 L72 30"/>\n'
+        '<path d="M88 30 L94 12 L108 26"/>\n'
+        '<circle cx="80" cy="48" r="26"/>\n'
+        f"{eye}\n{mouth}\n"
+        '<path d="M80 70 L80 100"/>\n'
+        '<path d="M60 84 Q80 96 100 84"/>\n'
+        '<path d="M52 102 Q44 112 34 104 Q28 98 34 92"/>\n'
+        '<path d="M68 104 L62 112"/>\n'
+        '<path d="M92 104 L98 112"/>\n'
+        f"{phone}\n</svg>"
     )
 
 
@@ -387,7 +387,6 @@ def generate_cat_section(commit_count, has_commit_or_pr=False, has_issue=False, 
 
     cat_html = (
         '<div style="display:flex;justify-content:center;align-items:flex-end;'
-        'color:var(--fgColor-default,currentColor);'
         'gap:12px;flex-wrap:wrap;">'
         + "".join(blocks)
         + "</div>"
