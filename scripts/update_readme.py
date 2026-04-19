@@ -264,7 +264,7 @@ def get_yesterday_repo_activity_flags(repos):
 
             event_time = _to_bjt(created_at)
             if event_time < day_start:
-                break
+                continue
             if event_time > day_end:
                 continue
 
@@ -350,7 +350,7 @@ def generate_language_stats_section(language_totals):
         )
 
     total_bytes = sum(language_totals.values())
-    top_langs = sorted(language_totals.items(), key=lambda x: x[1], reverse=True)[:MAX_LANGS_DISPLAY]
+    top_langs = sorted(language_totals.items(), key=lambda item: item[1], reverse=True)[:MAX_LANGS_DISPLAY]
     max_name_len = max(len(name) for name, _ in top_langs)
 
     lines = ["Most Used Language (all owned repos)", ""]
