@@ -312,7 +312,10 @@ def get_language_totals(repos):
             continue
         lang_data = github_api(f"https://api.github.com/repos/{full_name}/languages")
         if not isinstance(lang_data, dict):
-            print(f"⚠️  Skip language stats for {full_name}: unexpected response payload")
+            print(
+                f"⚠️  Skip language stats for {full_name}: expected dict response, "
+                f"got {type(lang_data).__name__}"
+            )
             continue
         for lang, size in lang_data.items():
             if isinstance(size, int) and size > 0:
@@ -345,7 +348,7 @@ def generate_cat_section(commit_count, has_commit_or_pr=False, has_issue=False, 
     if has_commit_or_pr:
         blocks.append(
             f'<div><pre style="{_PRE_STYLE}">\n{_tiny_cat_sit()}\n</pre>'
-            "<sub>mini cat: repo commit/PR</sub></div>"
+            "<sub>mini cat: repo pull request/commit</sub></div>"
         )
     if has_issue:
         blocks.append(
