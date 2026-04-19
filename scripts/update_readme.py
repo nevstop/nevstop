@@ -89,13 +89,14 @@ def _pick_cat(cats, commit_count, today):
     return msg
 
 
-def _cat_svg(expression, width=180, mini=False, with_phone=False):
+def _cat_svg(expression, width=180, mini=False, with_phone=False, aria_label="cat icon"):
     """Return an inline SVG cat.
 
     expression: one of "sleepy", "happy", "focused", "intense".
     width: rendered SVG width in px.
     mini: when True, uses thinner lines for companion cats.
     with_phone: when True, draws a small phone accessory.
+    aria_label: accessibility label read by screen readers.
     Unknown expressions fall back to the "happy" style.
     """
     stroke_w = 3 if mini else 4
@@ -129,7 +130,7 @@ def _cat_svg(expression, width=180, mini=False, with_phone=False):
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="{width}" '
         f'fill="none" stroke="currentColor" stroke-width="{stroke_w}" '
-        'stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="cat icon">\n'
+        f'stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="{aria_label}">\n'
         '<path d="M52 26 L66 12 L72 30"/>\n'
         '<path d="M88 30 L94 12 L108 26"/>\n'
         '<circle cx="80" cy="48" r="26"/>\n'
@@ -371,18 +372,20 @@ def generate_cat_section(commit_count, has_commit_or_pr=False, has_issue=False, 
         expression = "intense"
 
     msg = _pick_cat(cats, commit_count, today)
-    blocks = [f'<div>{_cat_svg(expression=expression, width=190)}</div>']
+    blocks = [
+        f'<div>{_cat_svg(expression=expression, width=190, aria_label=f"main cat {expression} mood")}</div>'
+    ]
 
     if has_commit_or_pr:
         blocks.append(
             '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">'
-            f'{_cat_svg(expression="happy", width=88, mini=True)}'
+            f'{_cat_svg(expression="happy", width=88, mini=True, aria_label="mini cat for repo pull request or commit activity")}'
             "<sub>mini cat: repo pull request/commit</sub></div>"
         )
     if has_issue:
         blocks.append(
             '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">'
-            f'{_cat_svg(expression="focused", width=88, mini=True, with_phone=True)}'
+            f'{_cat_svg(expression="focused", width=88, mini=True, with_phone=True, aria_label="mini cat for repo issue activity")}'
             "<sub>mini cat: repo issue</sub></div>"
         )
 
