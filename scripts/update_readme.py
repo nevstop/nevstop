@@ -23,9 +23,7 @@ MAX_REPOS_FOR_ACTIVITY_SCAN = 60
 MAX_REPOS_FOR_LANGUAGE_SCAN = 120
 VIPM_FETCH_TIMEOUT = 15   # seconds to wait for vipm.io response
 _VIPM_JSON_MAX_DEPTH = 6  # maximum recursion depth when walking VIPM JSON
-# fixed-width characters used by the install/star columns in the VIPM table:
-# "  💾 NNNNNN   ⭐ NNNN" → 2+2+6+3+2+4 = 22 chars after the name column
-_VIPM_STATS_COLS_WIDTH = 22
+VIPM_URL = f"https://www.vipm.io/publisher/nevstop/"
 
 # Beijing Time (UTC+8)
 BJT = timezone(timedelta(hours=8))
@@ -570,34 +568,54 @@ def get_vipm_packages():
     return []
 
 
-def generate_vipm_section(packages):
-    """Build a compact VIPM package stats block for the README."""
+def _parse_vipm_inline_totals(readme_content):
+    """Extract (installs, stars) from the existing VIPM_INLINE section.
+
+    Returns (0, 0) when no previous data is found so the delta is omitted
+    on the first run.
+    """
+    match = re.search(
+        r"<!-- VIPM_INLINE_START -->([\s\S]*?)<!-- VIPM_INLINE_END -->",
+        readme_content,
+    )
+    if not match:
+        return 0, 0
+    block = match.group(1)
+    installs_m = re.search(r"([\d,]+)\s+installs", block)
+    stars_m = re.search(r"([\d,]+)\s+stars", block)
+    installs = int(installs_m.group(1).replace(",", "")) if installs_m else 0
+    stars = int(stars_m.group(1).replace(",", "")) if stars_m else 0
+    return installs, stars
+
+
+def generate_vipm_inline_line(packages, old_installs=0, old_stars=0):
+    """Build a single inline text line for the LabVIEW developer description.
+
+    Example output:
+      > 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): \
+          16 packages, 34,469 installs, 69 stars，今日新增 installs: +123；Stars: +5
+    """
     if not packages:
-        return ""
+        return f"> 🔧 LabVIEW 开发者：[VIPM]({VIPM_URL})"
 
-    packages_sorted = sorted(packages, key=lambda p: p["installs"], reverse=True)
+    total_pkgs = len(packages)
+    total_installs = sum(p["installs"] for p in packages)
+    total_stars = sum(p["stars"] for p in packages)
 
-    name_col = max(len(p["name"]) for p in packages_sorted)
-    name_col = max(name_col, 12)
-
-    lines = [f"📦 VIPM 发布包 · vipm.io/publisher/{VIPM_PUBLISHER}", ""]
-    for pkg in packages_sorted:
-        name_padded = pkg["name"].ljust(name_col)
-        installs_str = f"{pkg['installs']:,}"
-        stars_str = f"{pkg['stars']:,}"
-        lines.append(f"{name_padded}  💾 {installs_str:>6}   ⭐ {stars_str:>4}")
-
-    sep = "─" * (name_col + _VIPM_STATS_COLS_WIDTH)
-    total_installs = sum(p["installs"] for p in packages_sorted)
-    total_stars = sum(p["stars"] for p in packages_sorted)
-    lines.append(sep)
-    summary_label = f"共 {len(packages_sorted)} 个包".ljust(name_col)
-    lines.append(
-        f"{summary_label}  💾 {total_installs:>6,}   ⭐ {total_stars:>4,}"
+    base = (
+        f"> 🔧 LabVIEW 开发者：[VIPM]({VIPM_URL}): "
+        f"{total_pkgs} packages, {total_installs:,} installs, {total_stars:,} stars"
     )
 
-    content = "\n".join(lines)
-    return f'<pre style="{_PRE_STYLE}">\n{content}\n</pre>'
+    # Append delta only when we have a previous reading
+    if old_installs > 0 or old_stars > 0:
+        delta_i = total_installs - old_installs
+        delta_s = total_stars - old_stars
+        sign_i = "+" if delta_i >= 0 else ""
+        sign_s = "+" if delta_s >= 0 else ""
+        base += f"，今日新增 installs: {sign_i}{delta_i:,}；Stars: {sign_s}{delta_s}"
+
+    return base
 
 
 # ── README Updater ──────────────────────────────────────────────────────────
@@ -639,10 +657,10 @@ def main():
         ),
     )
 
-    # Update VIPM package stats (skip section update if no data)
-    vipm_section = generate_vipm_section(vipm_packages)
-    if vipm_section:
-        content = replace_section(content, "VIPM_STATS", vipm_section)
+    # Update inline VIPM stats (read old totals first for delta, then overwrite)
+    old_installs, old_stars = _parse_vipm_inline_totals(content)
+    vipm_line = generate_vipm_inline_line(vipm_packages, old_installs, old_stars)
+    content = replace_section(content, "VIPM_INLINE", vipm_line)
 
     # Update Most Used Language stats
     content = replace_section(content, "LANG_STATS", generate_language_stats_section(language_totals))
