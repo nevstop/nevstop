@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Update README.md with dynamic content: cat status and language stats."""
+"""Update README.md with dynamic content: ASCII cat status and language stats."""
 
 import json
 import os
@@ -14,7 +14,6 @@ GITHUB_USER = "nevstop"
 GITHUB_ORGS = ["NEVSTOP-LAB"]
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 README_PATH = os.path.join(REPO_ROOT, "README.md")
-ASSETS_DIR = os.path.join(REPO_ROOT, "assets")
 
 MAX_EVENT_PAGES = 3       # pages of GitHub Events API to scan for commits
 MAX_LANGS_DISPLAY = 8
@@ -91,91 +90,50 @@ def _pick_cat(cats, commit_count, today):
     return msg
 
 
-def _cat_svg(
-    expression,
-    width=180,
-    mini=False,
-    with_phone=False,
-    aria_label="cat icon",
-    stroke_color="#24292f",
-):
-    """Return an inline SVG cat.
-
-    expression: one of "sleepy", "happy", "focused", "intense".
-    width: rendered SVG width in px.
-    mini: when True, uses thinner lines for companion cats.
-    with_phone: when True, draws a small phone accessory.
-    aria_label: accessibility label read by screen readers.
-    Unknown expressions fall back to the "happy" style.
-    """
-    stroke_w = 3 if mini else 4
-    happy_eyes = (
-        f'<circle cx="64" cy="44" r="3" fill="{stroke_color}"/>'
-        f'<circle cx="96" cy="44" r="3" fill="{stroke_color}"/>'
-    )
-    happy_mouth = '<path d="M72 58 Q80 66 88 58"/>'
-    eye = {
-        "sleepy": ('<line x1="60" y1="44" x2="68" y2="44"/>'
-                   '<line x1="92" y1="44" x2="100" y2="44"/>'),
-        "happy": happy_eyes,
-        "focused": (
-            happy_eyes
-            + '<line x1="58" y1="36" x2="70" y2="34"/>'
-            + '<line x1="90" y1="34" x2="102" y2="36"/>'
+def _cat_ascii(expression):
+    """Return a main ASCII cat based on mood expression."""
+    return {
+        "sleepy": "\n".join([
+            " /\\_/\\",
+            "( -.- ) zZ",
+            " / >~",
+        ]),
+        "happy": "\n".join([
+            " /\\_/\\",
+            "( ^.^ )",
+            " / >~",
+        ]),
+        "focused": "\n".join([
+            " /\\_/\\",
+            "( o.o )",
+            " / >~",
+        ]),
+        "intense": "\n".join([
+            " /\\_/\\",
+            "( >.< )",
+            " / >~",
+        ]),
+    }.get(
+        expression,
+        "\n".join(
+            [
+                " /\\_/\\",
+                "( ^.^ )",
+                " / >~",
+            ]
         ),
-        "intense": ('<line x1="58" y1="42" x2="70" y2="46"/>'
-                    '<line x1="90" y1="46" x2="102" y2="42"/>'),
-    }.get(expression, happy_eyes)
-    mouth = {
-        "sleepy": '<path d="M74 58 Q80 62 86 58"/>',
-        "happy": happy_mouth,
-        "focused": '<line x1="76" y1="58" x2="84" y2="58"/>',
-        "intense": '<path d="M72 60 Q80 54 88 60"/>',
-    }.get(expression, happy_mouth)
-    phone = (
-        '<rect x="112" y="74" width="16" height="24" rx="2"/>'
-        f'<circle cx="120" cy="93" r="1.5" fill="{stroke_color}"/>'
-    ) if with_phone else ""
-    return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="{width}" '
-        f'fill="none" stroke="{stroke_color}" stroke-width="{stroke_w}" '
-        f'stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="{aria_label}">\n'
-        '<path d="M52 26 L66 12 L72 30"/>\n'
-        '<path d="M88 30 L94 12 L108 26"/>\n'
-        '<circle cx="80" cy="48" r="26"/>\n'
-        f"{eye}\n{mouth}\n"
-        '<path d="M80 70 L80 100"/>\n'
-        '<path d="M60 84 Q80 96 100 84"/>\n'
-        '<path d="M52 102 Q44 112 34 104 Q28 98 34 92"/>\n'
-        '<path d="M68 104 L62 112"/>\n'
-        '<path d="M92 104 L98 112"/>\n'
-        f"{phone}\n</svg>"
     )
 
 
-def _write_svg_asset(filename, svg_content):
-    """Write SVG content to /assets for README image embedding."""
-    os.makedirs(ASSETS_DIR, exist_ok=True)
-    path = os.path.join(ASSETS_DIR, filename)
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(svg_content)
-
-
-def _cat_asset_url(filename, cache_version):
-    """Return a raw GitHub URL with a cache-busting query param."""
-    return (
-        f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_USER}/main/assets/{filename}"
-        f"?v={cache_version}"
-    )
-
-
-def _theme_image_html(base_name, width, alt, cache_version):
-    """Render paired image tags for GitHub light/dark mode switching."""
-    light_url = _cat_asset_url(f"{base_name}-light.svg", cache_version)
-    dark_url = _cat_asset_url(f"{base_name}-dark.svg", cache_version)
-    return (
-        f'<img src="{light_url}#gh-light-mode-only" width="{width}" alt="{alt}"/>'
-        f'<img src="{dark_url}#gh-dark-mode-only" width="{width}" alt="{alt}"/>'
+def _mini_ascii_cat(with_phone=False):
+    """Return a companion mini ASCII cat."""
+    paw = "[#]" if with_phone else "~~"
+    return "\n".join(
+        [
+            " /\\_/\\",
+            "(o.o )",
+            f" / {paw}",
+        ]
     )
 
 
@@ -410,40 +368,22 @@ def _resolve_cat_state(commit_count, today):
     return expression, msg
 
 
-def write_cat_assets(expression):
-    """Generate cat SVG assets for both GitHub light and dark themes."""
-    theme_colors = {"light": "#24292f", "dark": "#f0f6fc"}
-    for theme, color in theme_colors.items():
-        _write_svg_asset(
-            f"readme-cat-main-{theme}.svg",
-            _cat_svg(
-                expression=expression,
-                width=190,
-                aria_label=f"main cat {expression} mood",
-                stroke_color=color,
-            ),
-        )
-        _write_svg_asset(
-            f"readme-cat-mini-repo-{theme}.svg",
-            _cat_svg(
-                expression="happy",
-                width=88,
-                mini=True,
-                aria_label="mini cat for repo pull request or commit activity",
-                stroke_color=color,
-            ),
-        )
-        _write_svg_asset(
-            f"readme-cat-mini-issue-{theme}.svg",
-            _cat_svg(
-                expression="focused",
-                width=88,
-                mini=True,
-                with_phone=True,
-                aria_label="mini cat for repo issue activity",
-                stroke_color=color,
-            ),
-        )
+def _cats_side_by_side(cat_strings, gap=4):
+    """Render multiple ASCII cats horizontally on the same row.
+
+    Each cat_string is a multi-line block; rows are zipped side-by-side
+    separated by *gap* spaces.
+    """
+    split = [c.split("\n") for c in cat_strings]
+    height = max(len(rows) for rows in split)
+    width = [max(len(r) for r in rows) for rows in split]
+    padded = []
+    for i, rows in enumerate(split):
+        col = [r.ljust(width[i]) for r in rows]
+        col += [" " * width[i]] * (height - len(col))
+        padded.append(col)
+    sep = " " * gap
+    return "\n".join(sep.join(col[row] for col in padded) for row in range(height))
 
 
 def generate_cat_section(
@@ -451,35 +391,17 @@ def generate_cat_section(
     has_commit_or_pr=False,
     has_issue=False,
     today=None,
-    cache_version=None,
 ):
-    """Build the cat image block + status line for the given commit count."""
+    """Build the ASCII cat block + status line for the given commit count."""
     expression, msg = _resolve_cat_state(commit_count, today)
-    if cache_version is None:
-        cache_version = datetime.now(BJT).strftime("%Y%m%d%H%M")
-    blocks = [
-        f'<div>{_theme_image_html("readme-cat-main", 190, f"main cat {expression} mood", cache_version)}</div>'
-    ]
-
+    cats = [_cat_ascii(expression)]
     if has_commit_or_pr:
-        blocks.append(
-            '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">'
-            f'{_theme_image_html("readme-cat-mini-repo", 88, "mini cat for repo pull request or commit activity", cache_version)}'
-            "<sub>mini cat: repo pull request/commit</sub></div>"
-        )
+        cats.append(_mini_ascii_cat())
     if has_issue:
-        blocks.append(
-            '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">'
-            f'{_theme_image_html("readme-cat-mini-issue", 88, "mini cat for repo issue activity", cache_version)}'
-            "<sub>mini cat: repo issue</sub></div>"
-        )
+        cats.append(_mini_ascii_cat(with_phone=True))
 
-    cat_html = (
-        '<div style="display:flex;justify-content:center;align-items:flex-end;'
-        'gap:12px;flex-wrap:wrap;">'
-        + "".join(blocks)
-        + "</div>"
-    )
+    cat_ascii = _cats_side_by_side(cats)
+    cat_html = f'<pre style="{_PRE_STYLE}">\n{cat_ascii}\n</pre>'
     return f"{cat_html}\n\n{msg}"
 
 
@@ -529,9 +451,6 @@ def main():
     language_totals = get_language_totals(repos)
     now_bjt = datetime.now(BJT)
     today = now_bjt.date()
-    cache_version = now_bjt.strftime("%Y%m%d%H%M")
-    expression, _ = _resolve_cat_state(commit_count, today)
-    write_cat_assets(expression)
 
     with open(README_PATH, "r", encoding="utf-8") as f:
         content = f.read()
@@ -545,7 +464,6 @@ def main():
             has_commit_or_pr,
             has_issue,
             today=today,
-            cache_version=cache_version,
         ),
     )
 
