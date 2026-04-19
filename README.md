@@ -1,7 +1,22 @@
 <div align="center">
 
 <!-- CAT_START -->
-<div style="display:flex;justify-content:center;align-items:flex-end;gap:12px;flex-wrap:wrap;"><div><img src="https://raw.githubusercontent.com/nevstop/nevstop/main/assets/readme-cat-main-light.svg?v=202604191725#gh-light-mode-only" width="190" alt="main cat sleepy mood"/><img src="https://raw.githubusercontent.com/nevstop/nevstop/main/assets/readme-cat-main-dark.svg?v=202604191725#gh-dark-mode-only" width="190" alt="main cat sleepy mood"/></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><img src="https://raw.githubusercontent.com/nevstop/nevstop/main/assets/readme-cat-mini-repo-light.svg?v=202604191725#gh-light-mode-only" width="88" alt="mini cat for repo pull request or commit activity"/><img src="https://raw.githubusercontent.com/nevstop/nevstop/main/assets/readme-cat-mini-repo-dark.svg?v=202604191725#gh-dark-mode-only" width="88" alt="mini cat for repo pull request or commit activity"/><sub>mini cat: repo pull request/commit</sub></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><img src="https://raw.githubusercontent.com/nevstop/nevstop/main/assets/readme-cat-mini-issue-light.svg?v=202604191725#gh-light-mode-only" width="88" alt="mini cat for repo issue activity"/><img src="https://raw.githubusercontent.com/nevstop/nevstop/main/assets/readme-cat-mini-issue-dark.svg?v=202604191725#gh-dark-mode-only" width="88" alt="mini cat for repo issue activity"/><sub>mini cat: repo issue</sub></div></div>
+<pre style="display:inline-block;margin:0;text-align:left;font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;line-height:1.2;">
+main cat
+ /\_/\
+( -.- ) zZ
+ / >~
+
+mini cat: repo pull request/commit
+ /\_/\
+(o.o )
+ / ~~
+
+mini cat: repo issue
+ /\_/\
+(o.o )
+ / [#]
+</pre>
 
 💤 摸鱼模式 | 半梦半醒中~
 <!-- CAT_END -->
