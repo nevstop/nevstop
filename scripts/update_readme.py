@@ -23,11 +23,9 @@ MAX_REPOS_FOR_LANGUAGE_SCAN = 120
 # Beijing Time (UTC+8)
 BJT = timezone(timedelta(hours=8))
 
-# ── ASCII Cat Art ───────────────────────────────────────────────────────────
-# Each entry: (face_line, status_message_template)
+# ── Cat Status Templates ────────────────────────────────────────────────────
+# Each entry: (legacy_face, status_message_template)
 # {n} in status will be replaced with the commit count.
-# The face_line goes into the <pre> block (ASCII-only, no emoji / CJK).
-# The status message is rendered outside the <pre> block as normal text.
 
 _CATS_IDLE = [
     ("( -.- )  zzzZ", "💤 摸鱼模式 | 昨天没有提交代码哦~"),
@@ -84,40 +82,55 @@ _PRE_STYLE = (
 )
 
 
-def _cat_body(face_line):
-    """Return a 5-line ASCII cat body (no emoji, no CJK)."""
-    return "\n".join([
-        "    /\\_/\\",
-        f"   {face_line}",
-        "    > ^ <",
-        "   /|   |\\",
-        "  (_|   |_)",
-    ])
-
-
 def _pick_cat(cats, commit_count, today):
     """Pick a cat deterministically for the given day."""
     rng = random.Random(today.toordinal())
-    face_line, msg_tpl = rng.choice(cats)
-    body = _cat_body(face_line)
+    _, msg_tpl = rng.choice(cats)
     msg = msg_tpl.format(n=commit_count)
-    return body, msg
+    return msg
 
 
-def _tiny_cat_sit():
-    return "\n".join([
-        " /\\_/\\",
-        "( ^.^ )",
-        " /|_|\\",
-    ])
-
-
-def _tiny_cat_phone():
-    return "\n".join([
-        " /\\_/\\",
-        "( o.o )",
-        " /|-|\\",
-    ])
+def _cat_svg(expression, width=180, mini=False, with_phone=False):
+    """Return an inline SVG cat with transparent background and theme-aware color."""
+    stroke_w = 3 if mini else 4
+    eye = {
+        "sleepy": ('<line x1="60" y1="44" x2="68" y2="44"/>'
+                   '<line x1="92" y1="44" x2="100" y2="44"/>'),
+        "focused": ('<circle cx="64" cy="44" r="3" fill="currentColor"/>'
+                    '<circle cx="96" cy="44" r="3" fill="currentColor"/>'
+                    '<line x1="58" y1="36" x2="70" y2="34"/>'
+                    '<line x1="90" y1="34" x2="102" y2="36"/>'),
+        "intense": ('<line x1="58" y1="42" x2="70" y2="46"/>'
+                    '<line x1="90" y1="46" x2="102" y2="42"/>'),
+    }.get(
+        expression,
+        '<circle cx="64" cy="44" r="3" fill="currentColor"/>'
+        '<circle cx="96" cy="44" r="3" fill="currentColor"/>',
+    )
+    mouth = {
+        "sleepy": '<path d="M74 58 Q80 62 86 58"/>',
+        "focused": '<line x1="76" y1="58" x2="84" y2="58"/>',
+        "intense": '<path d="M72 60 Q80 54 88 60"/>',
+    }.get(expression, '<path d="M72 58 Q80 66 88 58"/>')
+    phone = (
+        '<rect x="112" y="74" width="16" height="24" rx="2"/>'
+        '<circle cx="120" cy="93" r="1.5" fill="currentColor"/>'
+    ) if with_phone else ""
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="{width}" '
+        f'fill="none" stroke="currentColor" stroke-width="{stroke_w}" '
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M52 26 L66 12 L72 30"/>'
+        '<path d="M88 30 L94 12 L108 26"/>'
+        '<circle cx="80" cy="48" r="26"/>'
+        f"{eye}{mouth}"
+        '<path d="M80 70 L80 100"/>'
+        '<path d="M60 84 Q80 96 100 84"/>'
+        '<path d="M52 102 Q44 112 34 104 Q28 98 34 92"/>'
+        '<path d="M68 104 L62 112"/>'
+        '<path d="M92 104 L98 112"/>'
+        f"{phone}</svg>"
+    )
 
 
 # ── GitHub API Helper ───────────────────────────────────────────────────────
@@ -327,37 +340,45 @@ def get_language_totals(repos):
 
 
 def generate_cat_section(commit_count, has_commit_or_pr=False, has_issue=False, today=None):
-    """Build the cat <pre> block + status line for the given commit count."""
+    """Build the cat SVG block + status line for the given commit count."""
     if today is None:
         today = datetime.now(BJT).date()
 
     if commit_count == 0:
         cats = _CATS_IDLE
+        expression = "sleepy"
     elif commit_count <= 3:
         cats = _CATS_LIGHT
+        expression = "happy"
     elif commit_count <= 8:
         cats = _CATS_FOCUS
+        expression = "focused"
     elif commit_count <= 15:
         cats = _CATS_HEAVY
+        expression = "intense"
     else:
         cats = _CATS_ULTRA
+        expression = "intense"
 
-    body, msg = _pick_cat(cats, commit_count, today)
-    blocks = [f'<pre style="{_PRE_STYLE}">\n{body}\n</pre>']
+    msg = _pick_cat(cats, commit_count, today)
+    blocks = [f'<div>{_cat_svg(expression=expression, width=190)}</div>']
 
     if has_commit_or_pr:
         blocks.append(
-            f'<div><pre style="{_PRE_STYLE}">\n{_tiny_cat_sit()}\n</pre>'
+            '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">'
+            f'{_cat_svg(expression="happy", width=88, mini=True)}'
             "<sub>mini cat: repo pull request/commit</sub></div>"
         )
     if has_issue:
         blocks.append(
-            f'<div><pre style="{_PRE_STYLE}">\n{_tiny_cat_phone()}\n</pre>'
+            '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">'
+            f'{_cat_svg(expression="focused", width=88, mini=True, with_phone=True)}'
             "<sub>mini cat: repo issue</sub></div>"
         )
 
     cat_html = (
         '<div style="display:flex;justify-content:center;align-items:flex-end;'
+        'color:var(--fgColor-default,#24292f);'
         'gap:12px;flex-wrap:wrap;">'
         + "".join(blocks)
         + "</div>"
