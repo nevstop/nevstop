@@ -24,52 +24,51 @@ MAX_REPOS_FOR_LANGUAGE_SCAN = 120
 BJT = timezone(timedelta(hours=8))
 
 # ── Cat Status Templates ────────────────────────────────────────────────────
-# Each entry: (legacy_face, status_message_template)
 # {n} in status will be replaced with the commit count.
 
 _CATS_IDLE = [
-    ("( -.- )  zzzZ", "💤 摸鱼模式 | 昨天没有提交代码哦~"),
-    ("( =.= )  ....", "💤 摸鱼模式 | 进入低功耗模式~"),
-    ("( u.u )  ~~~",  "😴 摸鱼模式 | 悄悄打了个盹~"),
-    ("( -.o )  Zzz",  "💤 摸鱼模式 | 半梦半醒中~"),
-    ("( ~.~ )  zZ",   "🌙 摸鱼模式 | 与星星作伴中~"),
-    ("( T_T )  ...",  "😢 摸鱼模式 | 今天没有产出..."),
+    "💤 摸鱼模式 | 昨天没有提交代码哦~",
+    "💤 摸鱼模式 | 进入低功耗模式~",
+    "😴 摸鱼模式 | 悄悄打了个盹~",
+    "💤 摸鱼模式 | 半梦半醒中~",
+    "🌙 摸鱼模式 | 与星星作伴中~",
+    "😢 摸鱼模式 | 今天没有产出...",
 ]
 
 _CATS_LIGHT = [
-    ("( ^.^ )  ~  ",  "🌱 轻松模式 | 昨天提交了 {n} 个 commit"),
-    ("( o.o )  ?  ",  "🤔 好奇模式 | 昨天提交了 {n} 个 commit"),
-    ("( >.o )     ",  "😌 稳健模式 | 昨天提交了 {n} 个 commit"),
-    ("( *_* )  !  ",  "✨ 活力模式 | 昨天提交了 {n} 个 commit"),
-    ("( ^_^ )  :) ",  "😊 开心模式 | 昨天提交了 {n} 个 commit"),
-    ("( o_o )  >> ",  "👀 认真模式 | 昨天提交了 {n} 个 commit"),
+    "🌱 轻松模式 | 昨天提交了 {n} 个 commit",
+    "🤔 好奇模式 | 昨天提交了 {n} 个 commit",
+    "😌 稳健模式 | 昨天提交了 {n} 个 commit",
+    "✨ 活力模式 | 昨天提交了 {n} 个 commit",
+    "😊 开心模式 | 昨天提交了 {n} 个 commit",
+    "👀 认真模式 | 昨天提交了 {n} 个 commit",
 ]
 
 _CATS_FOCUS = [
-    ("( o_o )  ** ",  "💻 专注模式 | 昨天提交了 {n} 个 commit"),
-    ("( >_< )  !! ",  "🎯 冲刺模式 | 昨天提交了 {n} 个 commit"),
-    ("( *_* )  ** ",  "🌟 高效模式 | 昨天提交了 {n} 个 commit"),
-    ("( >_> )     ",  "👊 干劲模式 | 昨天提交了 {n} 个 commit"),
-    ("( 0_0 )  >> ",  "🔍 钻研模式 | 昨天提交了 {n} 个 commit"),
-    ("( ^_^ )  !  ",  "😎 自信模式 | 昨天提交了 {n} 个 commit"),
+    "💻 专注模式 | 昨天提交了 {n} 个 commit",
+    "🎯 冲刺模式 | 昨天提交了 {n} 个 commit",
+    "🌟 高效模式 | 昨天提交了 {n} 个 commit",
+    "👊 干劲模式 | 昨天提交了 {n} 个 commit",
+    "🔍 钻研模式 | 昨天提交了 {n} 个 commit",
+    "😎 自信模式 | 昨天提交了 {n} 个 commit",
 ]
 
 _CATS_HEAVY = [
-    ("( @_@ )  !!!",  "🔥 疯狂加班 | 昨天提交了 {n} 个 commit！"),
-    ("( O_O )  !! ",  "😱 震撼模式 | 昨天提交了 {n} 个 commit！"),
-    ("( x_x )  +  ",  "💥 超载模式 | 昨天提交了 {n} 个 commit！"),
-    ("( >_< )     ",  "😤 爆发模式 | 昨天提交了 {n} 个 commit！"),
-    ("( #_# )  ~~ ",  "🚀 飞速模式 | 昨天提交了 {n} 个 commit！"),
-    ("( $_$ )  !! ",  "💰 黄金模式 | 昨天提交了 {n} 个 commit！"),
+    "🔥 疯狂加班 | 昨天提交了 {n} 个 commit！",
+    "😱 震撼模式 | 昨天提交了 {n} 个 commit！",
+    "💥 超载模式 | 昨天提交了 {n} 个 commit！",
+    "😤 爆发模式 | 昨天提交了 {n} 个 commit！",
+    "🚀 飞速模式 | 昨天提交了 {n} 个 commit！",
+    "💰 黄金模式 | 昨天提交了 {n} 个 commit！",
 ]
 
 _CATS_ULTRA = [
-    ("( @_@ ) !!!",   "🌋 传说级加班 | 昨天提交了 {n} 个 commit！！"),
-    ("( ~_~ ) ...",   "🏆 超神模式 | 昨天提交了 {n} 个 commit！！"),
-    ("( ^o^ ) !!!",   "🎆 疯狂模式 | 昨天提交了 {n} 个 commit！！"),
-    ("( X_X )  ##",   "💀 极限模式 | 昨天提交了 {n} 个 commit！！"),
-    ("( *_* ) ***",   "⚡ 闪电模式 | 昨天提交了 {n} 个 commit！！"),
-    ("( 0_0 )  !!",   "🎯 传说级  | 昨天提交了 {n} 个 commit！！"),
+    "🌋 传说级加班 | 昨天提交了 {n} 个 commit！！",
+    "🏆 超神模式 | 昨天提交了 {n} 个 commit！！",
+    "🎆 疯狂模式 | 昨天提交了 {n} 个 commit！！",
+    "💀 极限模式 | 昨天提交了 {n} 个 commit！！",
+    "⚡ 闪电模式 | 昨天提交了 {n} 个 commit！！",
+    "🎯 传说级  | 昨天提交了 {n} 个 commit！！",
 ]
 
 
@@ -85,7 +84,7 @@ _PRE_STYLE = (
 def _pick_cat(cats, commit_count, today):
     """Pick a cat deterministically for the given day."""
     rng = random.Random(today.toordinal())
-    _, msg_tpl = rng.choice(cats)
+    msg_tpl = rng.choice(cats)
     msg = msg_tpl.format(n=commit_count)
     return msg
 
@@ -96,6 +95,8 @@ def _cat_svg(expression, width=180, mini=False, with_phone=False):
     eye = {
         "sleepy": ('<line x1="60" y1="44" x2="68" y2="44"/>'
                    '<line x1="92" y1="44" x2="100" y2="44"/>'),
+        "happy": ('<circle cx="64" cy="44" r="3" fill="currentColor"/>'
+                  '<circle cx="96" cy="44" r="3" fill="currentColor"/>'),
         "focused": ('<circle cx="64" cy="44" r="3" fill="currentColor"/>'
                     '<circle cx="96" cy="44" r="3" fill="currentColor"/>'
                     '<line x1="58" y1="36" x2="70" y2="34"/>'
@@ -109,6 +110,7 @@ def _cat_svg(expression, width=180, mini=False, with_phone=False):
     )
     mouth = {
         "sleepy": '<path d="M74 58 Q80 62 86 58"/>',
+        "happy": '<path d="M72 58 Q80 66 88 58"/>',
         "focused": '<line x1="76" y1="58" x2="84" y2="58"/>',
         "intense": '<path d="M72 60 Q80 54 88 60"/>',
     }.get(expression, '<path d="M72 58 Q80 66 88 58"/>')
