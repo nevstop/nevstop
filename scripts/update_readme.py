@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 
 GITHUB_USER = "nevstop"
 GITHUB_ORGS = ["NEVSTOP-LAB"]
-REPO_ROOT = os.path.dirname(os.path.dirname(__file__))
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 README_PATH = os.path.join(REPO_ROOT, "README.md")
 ASSETS_DIR = os.path.join(REPO_ROOT, "assets")
 
