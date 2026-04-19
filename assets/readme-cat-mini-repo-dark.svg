@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="88" fill="none" stroke="#f0f6fc" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="mini cat for repo pull request or commit activity">
+<path d="M52 26 L66 12 L72 30"/>
+<path d="M88 30 L94 12 L108 26"/>
+<circle cx="80" cy="48" r="26"/>
+<circle cx="64" cy="44" r="3" fill="#f0f6fc"/><circle cx="96" cy="44" r="3" fill="#f0f6fc"/>
+<path d="M72 58 Q80 66 88 58"/>
+<path d="M80 70 L80 100"/>
+<path d="M60 84 Q80 96 100 84"/>
+<path d="M52 102 Q44 112 34 104 Q28 98 34 92"/>
+<path d="M68 104 L62 112"/>
+<path d="M92 104 L98 112"/>
+
+</svg>
