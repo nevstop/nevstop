@@ -44,7 +44,7 @@
 
 ### 👋 Hi, I'm **NEVSTOP**
 
-> 🔧 LabVIEW 开发者 | 用代码让测试测量更简单
+> 🔧 LabVIEW 开发者
 
 [![知乎](https://img.shields.io/badge/知乎-CSM专栏-0084FF?logo=zhihu&logoColor=white)](https://www.zhihu.com/column/c_1681072169147342848)&emsp;
 [![知乎](https://img.shields.io/badge/知乎-NEVSOTP--LAB-0084FF?logo=zhihu&logoColor=white)](https://www.zhihu.com/column/c_1770421455375126528)&emsp;
