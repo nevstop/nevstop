@@ -90,7 +90,12 @@ def _pick_cat(cats, commit_count, today):
 
 
 def _cat_svg(expression, width=180, mini=False, with_phone=False):
-    """Return an inline SVG cat with transparent background and theme-aware color."""
+    """Return an inline SVG cat.
+
+    expression: one of "sleepy", "happy", "focused", "intense".
+    mini: when True, uses thinner lines for companion cats.
+    with_phone: when True, draws a small phone accessory.
+    """
     stroke_w = 3 if mini else 4
     eye = {
         "sleepy": ('<line x1="60" y1="44" x2="68" y2="44"/>'
@@ -380,7 +385,7 @@ def generate_cat_section(commit_count, has_commit_or_pr=False, has_issue=False, 
 
     cat_html = (
         '<div style="display:flex;justify-content:center;align-items:flex-end;'
-        'color:var(--fgColor-default,#24292f);'
+        'color:var(--fgColor-default,currentColor);'
         'gap:12px;flex-wrap:wrap;">'
         + "".join(blocks)
         + "</div>"
