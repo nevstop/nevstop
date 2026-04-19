@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="190" fill="none" stroke="#f0f6fc" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="main cat sleepy mood">
+<path d="M52 26 L66 12 L72 30"/>
+<path d="M88 30 L94 12 L108 26"/>
+<circle cx="80" cy="48" r="26"/>
+<line x1="60" y1="44" x2="68" y2="44"/><line x1="92" y1="44" x2="100" y2="44"/>
+<path d="M74 58 Q80 62 86 58"/>
+<path d="M80 70 L80 100"/>
+<path d="M60 84 Q80 96 100 84"/>
+<path d="M52 102 Q44 112 34 104 Q28 98 34 92"/>
+<path d="M68 104 L62 112"/>
+<path d="M92 104 L98 112"/>
+
+</svg>

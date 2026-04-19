@@ -12,7 +12,9 @@ from datetime import datetime, timedelta, timezone
 
 GITHUB_USER = "nevstop"
 GITHUB_ORGS = ["NEVSTOP-LAB"]
-README_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "README.md")
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+README_PATH = os.path.join(REPO_ROOT, "README.md")
+ASSETS_DIR = os.path.join(REPO_ROOT, "assets")
 
 MAX_EVENT_PAGES = 3       # pages of GitHub Events API to scan for commits
 MAX_LANGS_DISPLAY = 8
@@ -89,7 +91,14 @@ def _pick_cat(cats, commit_count, today):
     return msg
 
 
-def _cat_svg(expression, width=180, mini=False, with_phone=False, aria_label="cat icon"):
+def _cat_svg(
+    expression,
+    width=180,
+    mini=False,
+    with_phone=False,
+    aria_label="cat icon",
+    stroke_color="#24292f",
+):
     """Return an inline SVG cat.
 
     expression: one of "sleepy", "happy", "focused", "intense".
@@ -101,8 +110,8 @@ def _cat_svg(expression, width=180, mini=False, with_phone=False, aria_label="ca
     """
     stroke_w = 3 if mini else 4
     happy_eyes = (
-        '<circle cx="64" cy="44" r="3" fill="currentColor"/>'
-        '<circle cx="96" cy="44" r="3" fill="currentColor"/>'
+        f'<circle cx="64" cy="44" r="3" fill="{stroke_color}"/>'
+        f'<circle cx="96" cy="44" r="3" fill="{stroke_color}"/>'
     )
     happy_mouth = '<path d="M72 58 Q80 66 88 58"/>'
     eye = {
@@ -125,11 +134,11 @@ def _cat_svg(expression, width=180, mini=False, with_phone=False, aria_label="ca
     }.get(expression, happy_mouth)
     phone = (
         '<rect x="112" y="74" width="16" height="24" rx="2"/>'
-        '<circle cx="120" cy="93" r="1.5" fill="currentColor"/>'
+        f'<circle cx="120" cy="93" r="1.5" fill="{stroke_color}"/>'
     ) if with_phone else ""
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="{width}" '
-        f'fill="none" stroke="currentColor" stroke-width="{stroke_w}" '
+        f'fill="none" stroke="{stroke_color}" stroke-width="{stroke_w}" '
         f'stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="{aria_label}">\n'
         '<path d="M52 26 L66 12 L72 30"/>\n'
         '<path d="M88 30 L94 12 L108 26"/>\n'
@@ -141,6 +150,32 @@ def _cat_svg(expression, width=180, mini=False, with_phone=False, aria_label="ca
         '<path d="M68 104 L62 112"/>\n'
         '<path d="M92 104 L98 112"/>\n'
         f"{phone}\n</svg>"
+    )
+
+
+def _write_svg_asset(filename, svg_content):
+    """Write SVG content to /assets for README image embedding."""
+    os.makedirs(ASSETS_DIR, exist_ok=True)
+    path = os.path.join(ASSETS_DIR, filename)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(svg_content)
+
+
+def _cat_asset_url(filename, cache_version):
+    """Return a raw GitHub URL with a cache-busting query param."""
+    return (
+        f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_USER}/main/assets/{filename}"
+        f"?v={cache_version}"
+    )
+
+
+def _theme_image_html(base_name, width, alt, cache_version):
+    """Render paired image tags for GitHub light/dark mode switching."""
+    light_url = _cat_asset_url(f"{base_name}-light.svg", cache_version)
+    dark_url = _cat_asset_url(f"{base_name}-dark.svg", cache_version)
+    return (
+        f'<img src="{light_url}#gh-light-mode-only" width="{width}" alt="{alt}"/>'
+        f'<img src="{dark_url}#gh-dark-mode-only" width="{width}" alt="{alt}"/>'
     )
 
 
@@ -350,8 +385,8 @@ def get_language_totals(repos):
 # ── Section Generators ──────────────────────────────────────────────────────
 
 
-def generate_cat_section(commit_count, has_commit_or_pr=False, has_issue=False, today=None):
-    """Build the cat SVG block + status line for the given commit count."""
+def _resolve_cat_state(commit_count, today):
+    """Resolve cat expression and status message."""
     if today is None:
         today = datetime.now(BJT).date()
 
@@ -372,20 +407,70 @@ def generate_cat_section(commit_count, has_commit_or_pr=False, has_issue=False, 
         expression = "intense"
 
     msg = _pick_cat(cats, commit_count, today)
+    return expression, msg
+
+
+def write_cat_assets(expression):
+    """Generate cat SVG assets for both GitHub light and dark themes."""
+    theme_colors = {"light": "#24292f", "dark": "#f0f6fc"}
+    for theme, color in theme_colors.items():
+        _write_svg_asset(
+            f"readme-cat-main-{theme}.svg",
+            _cat_svg(
+                expression=expression,
+                width=190,
+                aria_label=f"main cat {expression} mood",
+                stroke_color=color,
+            ),
+        )
+        _write_svg_asset(
+            f"readme-cat-mini-repo-{theme}.svg",
+            _cat_svg(
+                expression="happy",
+                width=88,
+                mini=True,
+                aria_label="mini cat for repo pull request or commit activity",
+                stroke_color=color,
+            ),
+        )
+        _write_svg_asset(
+            f"readme-cat-mini-issue-{theme}.svg",
+            _cat_svg(
+                expression="focused",
+                width=88,
+                mini=True,
+                with_phone=True,
+                aria_label="mini cat for repo issue activity",
+                stroke_color=color,
+            ),
+        )
+
+
+def generate_cat_section(
+    commit_count,
+    has_commit_or_pr=False,
+    has_issue=False,
+    today=None,
+    cache_version=None,
+):
+    """Build the cat image block + status line for the given commit count."""
+    expression, msg = _resolve_cat_state(commit_count, today)
+    if cache_version is None:
+        cache_version = datetime.now(BJT).strftime("%Y%m%d%H%M")
     blocks = [
-        f'<div>{_cat_svg(expression=expression, width=190, aria_label=f"main cat {expression} mood")}</div>'
+        f'<div>{_theme_image_html("readme-cat-main", 190, f"main cat {expression} mood", cache_version)}</div>'
     ]
 
     if has_commit_or_pr:
         blocks.append(
             '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">'
-            f'{_cat_svg(expression="happy", width=88, mini=True, aria_label="mini cat for repo pull request or commit activity")}'
+            f'{_theme_image_html("readme-cat-mini-repo", 88, "mini cat for repo pull request or commit activity", cache_version)}'
             "<sub>mini cat: repo pull request/commit</sub></div>"
         )
     if has_issue:
         blocks.append(
             '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">'
-            f'{_cat_svg(expression="focused", width=88, mini=True, with_phone=True, aria_label="mini cat for repo issue activity")}'
+            f'{_theme_image_html("readme-cat-mini-issue", 88, "mini cat for repo issue activity", cache_version)}'
             "<sub>mini cat: repo issue</sub></div>"
         )
 
@@ -442,7 +527,11 @@ def main():
     repos = get_owned_repos()
     has_commit_or_pr, has_issue = get_yesterday_repo_activity_flags(repos)
     language_totals = get_language_totals(repos)
-    today = datetime.now(BJT).date()
+    now_bjt = datetime.now(BJT)
+    today = now_bjt.date()
+    cache_version = now_bjt.strftime("%Y%m%d%H%M")
+    expression, _ = _resolve_cat_state(commit_count, today)
+    write_cat_assets(expression)
 
     with open(README_PATH, "r", encoding="utf-8") as f:
         content = f.read()
@@ -451,7 +540,13 @@ def main():
     content = replace_section(
         content,
         "CAT",
-        generate_cat_section(commit_count, has_commit_or_pr, has_issue, today),
+        generate_cat_section(
+            commit_count,
+            has_commit_or_pr,
+            has_issue,
+            today=today,
+            cache_version=cache_version,
+        ),
     )
 
     # Update Most Used Language stats
