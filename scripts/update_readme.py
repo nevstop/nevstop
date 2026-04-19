@@ -3,10 +3,10 @@
 
 import json
 import os
+import random
 import re
 import urllib.error
 import urllib.request
-import random
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
@@ -350,7 +350,7 @@ def generate_language_stats_section(language_totals):
     for lang, size in top_langs:
         ratio = size / total_bytes if total_bytes else 0
         filled = max(0, int(round(ratio * LANG_BAR_WIDTH)))
-        bar = ("█" * min(filled, LANG_BAR_WIDTH)).ljust(LANG_BAR_WIDTH, "░")
+        bar = ("█" * filled).ljust(LANG_BAR_WIDTH, "░")
         lines.append(f"{lang.ljust(max_name_len)}  {bar}  {ratio * 100:5.1f}%")
 
     content = "\n".join(lines)
