@@ -1,15 +1,15 @@
 <div align="center">
 
 <!-- CAT_START -->
-<pre>
+<div style="display:flex;justify-content:center;align-items:flex-end;gap:12px;flex-wrap:wrap;"><pre style="display:inline-block;margin:0;text-align:left;font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;line-height:1.2;">
     /\_/\
-   ( o_o )  **
+   ( -.o )  Zzz
     > ^ <
    /|   |\
   (_|   |_)
-</pre>
+</pre></div>
 
-💻 专注模式 | 欢迎来到我的 GitHub 主页！
+💤 摸鱼模式 | 半梦半醒中~
 <!-- CAT_END -->
 
 ### 👋 Hi, I'm **NEVSTOP**
@@ -24,23 +24,14 @@
 
 ## 📊 GitHub Stats
 
-<br>
-
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="https://streak-stats.demolab.com/?user=nevstop&theme=default&hide_border=true" />
-  <img src="https://streak-stats.demolab.com/?user=nevstop&theme=tokyonight&hide_border=true" />
-</picture>
-
-<br>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://github-readme-activity-graph.vercel.app/graph?username=nevstop&theme=tokyo-night" />
-  <source media="(prefers-color-scheme: light)" srcset="https://github-readme-activity-graph.vercel.app/graph?username=nevstop&theme=xcode" />
-  <img src="https://github-readme-activity-graph.vercel.app/graph?username=nevstop&theme=tokyo-night" />
-</picture>
+<!-- LANG_STATS_START -->
+Most Used Language 暂无可用数据（可能受到 API 限流影响）
+<!-- LANG_STATS_END -->
 
 ---
 
-<sub><!-- UPDATE_TIME_START -->🕐 Dashboard 由 GitHub Actions 每天北京时间凌晨 1:00 自动更新<!-- UPDATE_TIME_END --></sub>
+<sub><!-- UPDATE_TIME_START -->
+🕐 最近更新: 2026-04-19 12:24 (北京时间)
+<!-- UPDATE_TIME_END --></sub>
 
 </div>

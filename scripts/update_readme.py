@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""Update README.md with dynamic content: ASCII cat status and top starred repos."""
+"""Update README.md with dynamic content: cat status and language stats."""
 
 import json
 import os
-import random
 import re
 import urllib.error
 import urllib.request
+import random
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from html import escape as html_escape
 
 GITHUB_USER = "nevstop"
 GITHUB_ORGS = ["NEVSTOP-LAB"]
 README_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "README.md")
 
 MAX_EVENT_PAGES = 3       # pages of GitHub Events API to scan for commits
-MAX_DESC_LENGTH = 65      # max description chars in repo list; longer ones are truncated
-_TRUNCATE_SUFFIX_LEN = 3  # length of "..." appended after truncation
+MAX_LANGS_DISPLAY = 8
+LANG_BAR_WIDTH = 18
 
 # Beijing Time (UTC+8)
 BJT = timezone(timedelta(hours=8))
@@ -73,6 +73,15 @@ _CATS_ULTRA = [
 ]
 
 
+_CAT_PRE_STYLE = (
+    "display:inline-block;"
+    "margin:0;"
+    "text-align:left;"
+    "font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;"
+    "line-height:1.2;"
+)
+
+
 def _cat_body(face_line):
     """Return a 5-line ASCII cat body (no emoji, no CJK)."""
     return "\n".join([
@@ -91,6 +100,22 @@ def _pick_cat(cats, commit_count, today):
     body = _cat_body(face_line)
     msg = msg_tpl.format(n=commit_count)
     return body, msg
+
+
+def _tiny_cat_sit():
+    return "\n".join([
+        " /\\_/\\",
+        "( ^.^ )",
+        " /|_|\\",
+    ])
+
+
+def _tiny_cat_phone():
+    return "\n".join([
+        " /\\_/\\",
+        "( o.o )",
+        " /|-|\\",
+    ])
 
 
 # ── GitHub API Helper ───────────────────────────────────────────────────────
@@ -119,12 +144,24 @@ def github_api(url):
 # ── Commit Counting ────────────────────────────────────────────────────────
 
 
-def get_yesterday_commits():
-    """Count the user's push-event commits from yesterday (Beijing time)."""
-    now_bjt = datetime.now(BJT)
+def _get_yesterday_range(now_bjt=None):
+    """Return yesterday's [start, end] in Beijing time."""
+    if now_bjt is None:
+        now_bjt = datetime.now(BJT)
     yesterday = now_bjt - timedelta(days=1)
     day_start = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
     day_end = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
+    return day_start, day_end
+
+
+def _to_bjt(dt_str):
+    """Convert GitHub timestamp to Beijing time."""
+    return datetime.fromisoformat(dt_str.replace("Z", "+00:00")).astimezone(BJT)
+
+
+def get_yesterday_commits():
+    """Count the user's push-event commits from yesterday (Beijing time)."""
+    day_start, day_end = _get_yesterday_range()
 
     commit_count = 0
     for page in range(1, MAX_EVENT_PAGES + 1):
@@ -137,9 +174,7 @@ def get_yesterday_commits():
         for event in events:
             if event["type"] != "PushEvent":
                 continue
-            event_time = datetime.fromisoformat(
-                event["created_at"].replace("Z", "+00:00")
-            ).astimezone(BJT)
+            event_time = _to_bjt(event["created_at"])
             if day_start <= event_time <= day_end:
                 commit_count += event.get("payload", {}).get("size", 0)
             elif event_time < day_start:
@@ -147,7 +182,7 @@ def get_yesterday_commits():
     return commit_count
 
 
-# ── Top Repos ───────────────────────────────────────────────────────────────
+# ── Repo Helpers ────────────────────────────────────────────────────────────
 
 
 def _append_params(url, params):
@@ -171,31 +206,99 @@ def _fetch_all_repos(url):
     return repos
 
 
-def get_top_repos(n=5):
-    """Return the top-N starred repos owned by the user or their orgs."""
+def _get_target_orgs():
+    """Collect static + discovered orgs for the user."""
+    orgs = list(GITHUB_ORGS)
+    discovered_orgs = github_api(f"https://api.github.com/users/{GITHUB_USER}/orgs?per_page=100")
+    if isinstance(discovered_orgs, list):
+        for org in discovered_orgs:
+            login = org.get("login")
+            if login and login not in orgs:
+                orgs.append(login)
+    return orgs
+
+
+def get_owned_repos():
+    """Return all non-fork repos owned by the user or related orgs."""
     repos = _fetch_all_repos(
         f"https://api.github.com/users/{GITHUB_USER}/repos?type=owner"
     )
-    for org in GITHUB_ORGS:
+    for org in _get_target_orgs():
         repos.extend(
             _fetch_all_repos(f"https://api.github.com/orgs/{org}/repos")
         )
 
-    # Filter out forks and the profile repo itself
-    repos = [
-        r
-        for r in repos
-        if not r.get("fork") and r["name"] != GITHUB_USER
+    unique_repos = {}
+    for repo in repos:
+        full_name = repo.get("full_name")
+        if not full_name:
+            continue
+        unique_repos[full_name] = repo
+
+    return [
+        repo
+        for repo in unique_repos.values()
+        if not repo.get("fork") and repo.get("name") != GITHUB_USER
     ]
 
-    repos.sort(key=lambda r: r.get("stargazers_count", 0), reverse=True)
-    return repos[:n]
+
+def get_yesterday_repo_activity_flags(repos):
+    """Check whether owned repos had commit/PR activity or issues yesterday."""
+    day_start, day_end = _get_yesterday_range()
+    has_commit_or_pr = False
+    has_issue = False
+
+    for repo in repos:
+        full_name = repo.get("full_name")
+        if not full_name:
+            continue
+        events = github_api(f"https://api.github.com/repos/{full_name}/events?per_page=100")
+        if not isinstance(events, list):
+            continue
+
+        for event in events:
+            created_at = event.get("created_at")
+            event_type = event.get("type")
+            if not created_at or not event_type:
+                continue
+
+            event_time = _to_bjt(created_at)
+            if event_time < day_start:
+                break
+            if event_time > day_end:
+                continue
+
+            if event_type in ("PushEvent", "PullRequestEvent"):
+                has_commit_or_pr = True
+            elif event_type == "IssuesEvent":
+                has_issue = True
+
+            if has_commit_or_pr and has_issue:
+                return has_commit_or_pr, has_issue
+
+    return has_commit_or_pr, has_issue
+
+
+def get_language_totals(repos):
+    """Aggregate language byte counts from all owned repos."""
+    totals = defaultdict(int)
+    for repo in repos:
+        full_name = repo.get("full_name")
+        if not full_name:
+            continue
+        lang_data = github_api(f"https://api.github.com/repos/{full_name}/languages")
+        if not isinstance(lang_data, dict):
+            continue
+        for lang, size in lang_data.items():
+            if isinstance(size, int) and size > 0:
+                totals[lang] += size
+    return dict(totals)
 
 
 # ── Section Generators ──────────────────────────────────────────────────────
 
 
-def generate_cat_section(commit_count, today=None):
+def generate_cat_section(commit_count, has_commit_or_pr=False, has_issue=False, today=None):
     """Build the cat <pre> block + status line for the given commit count."""
     if today is None:
         today = datetime.now(BJT).date()
@@ -212,26 +315,50 @@ def generate_cat_section(commit_count, today=None):
         cats = _CATS_ULTRA
 
     body, msg = _pick_cat(cats, commit_count, today)
-    return f"<pre>\n{body}\n</pre>\n\n{msg}"
+    blocks = [f'<pre style="{_CAT_PRE_STYLE}">\n{body}\n</pre>']
+
+    if has_commit_or_pr:
+        blocks.append(
+            f'<div><pre style="{_CAT_PRE_STYLE}">\n{_tiny_cat_sit()}\n</pre>'
+            "<sub>mini cat: commits/PR</sub></div>"
+        )
+    if has_issue:
+        blocks.append(
+            f'<div><pre style="{_CAT_PRE_STYLE}">\n{_tiny_cat_phone()}\n</pre>'
+            "<sub>mini cat: issue call</sub></div>"
+        )
+
+    cat_html = (
+        '<div style="display:flex;justify-content:center;align-items:flex-end;'
+        'gap:12px;flex-wrap:wrap;">'
+        + "".join(blocks)
+        + "</div>"
+    )
+    return f"{cat_html}\n\n{msg}"
 
 
-def generate_repos_section(repos):
-    """Build a markdown list for the top repos."""
-    medals = ["🥇", "🥈", "🥉", "4.", "5."]
-    lines = []
-    for i, r in enumerate(repos):
-        full_name = html_escape(r["full_name"])
-        url = html_escape(r["html_url"])
-        stars = r.get("stargazers_count", 0)
-        desc = r.get("description") or ""
-        if len(desc) > MAX_DESC_LENGTH:
-            desc = desc[:MAX_DESC_LENGTH - _TRUNCATE_SUFFIX_LEN] + "..."
-        medal = medals[i] if i < len(medals) else f"{i + 1}."
-        line = f"{medal} **[{full_name}]({url})** ⭐ {stars}"
-        if desc:
-            line += f"  \n   {desc}"
-        lines.append(line)
-    return "\n\n".join(lines)
+def generate_language_stats_section(language_totals):
+    """Build Most Used Language section based on all owned repos."""
+    if not language_totals:
+        return "Most Used Language 暂无可用数据（可能受到 API 限流影响）"
+
+    total_bytes = sum(language_totals.values())
+    top_langs = sorted(language_totals.items(), key=lambda x: x[1], reverse=True)[:MAX_LANGS_DISPLAY]
+    max_name_len = max(len(name) for name, _ in top_langs)
+
+    lines = ["Most Used Language (all owned repos)", ""]
+    for lang, size in top_langs:
+        ratio = size / total_bytes if total_bytes else 0
+        filled = max(1, int(round(ratio * LANG_BAR_WIDTH)))
+        bar = ("█" * min(filled, LANG_BAR_WIDTH)).ljust(LANG_BAR_WIDTH, "░")
+        lines.append(f"{lang.ljust(max_name_len)}  {bar}  {ratio * 100:5.1f}%")
+
+    content = "\n".join(lines)
+    return (
+        '<pre style="display:inline-block;margin:0;text-align:left;'
+        "font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;"
+        f'line-height:1.2;">\n{content}\n</pre>'
+    )
 
 
 # ── README Updater ──────────────────────────────────────────────────────────
@@ -240,18 +367,33 @@ def generate_repos_section(repos):
 def replace_section(content, tag, replacement):
     """Replace content between <!-- TAG_START --> and <!-- TAG_END -->."""
     pattern = rf"(<!-- {tag}_START -->).*?(<!-- {tag}_END -->)"
-    return re.sub(pattern, rf"\1\n{replacement}\n\2", content, flags=re.DOTALL)
+    return re.sub(
+        pattern,
+        lambda m: f"{m.group(1)}\n{replacement}\n{m.group(2)}",
+        content,
+        flags=re.DOTALL,
+    )
 
 
 def main():
     commit_count = get_yesterday_commits()
+    repos = get_owned_repos()
+    has_commit_or_pr, has_issue = get_yesterday_repo_activity_flags(repos)
+    language_totals = get_language_totals(repos)
     today = datetime.now(BJT).date()
 
     with open(README_PATH, "r", encoding="utf-8") as f:
         content = f.read()
 
     # Update ASCII cat
-    content = replace_section(content, "CAT", generate_cat_section(commit_count, today))
+    content = replace_section(
+        content,
+        "CAT",
+        generate_cat_section(commit_count, has_commit_or_pr, has_issue, today),
+    )
+
+    # Update Most Used Language stats
+    content = replace_section(content, "LANG_STATS", generate_language_stats_section(language_totals))
 
     # Update timestamp
     now_str = datetime.now(BJT).strftime("%Y-%m-%d %H:%M (北京时间)")
@@ -260,7 +402,10 @@ def main():
     with open(README_PATH, "w", encoding="utf-8") as f:
         f.write(content)
 
-    print(f"✅ README updated — {commit_count} commits yesterday, top {len(top_repos)} repos refreshed")
+    print(
+        f"✅ README updated — {commit_count} commits yesterday, "
+        f"{len(repos)} owned repos scanned"
+    )
 
 
 if __name__ == "__main__":
