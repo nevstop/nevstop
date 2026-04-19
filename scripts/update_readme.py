@@ -340,7 +340,14 @@ def generate_cat_section(commit_count, has_commit_or_pr=False, has_issue=False, 
 def generate_language_stats_section(language_totals):
     """Build Most Used Language section based on all owned repos."""
     if not language_totals:
-        return "Most Used Language 暂无可用数据（可能受到 API 限流影响）"
+        return (
+            '<pre style="display:inline-block;margin:0;text-align:left;'
+            "font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;"
+            'line-height:1.2;">\n'
+            "Most Used Language (all owned repos)\n\n"
+            "暂无可用数据（可能受到 API 限流影响）\n"
+            "</pre>"
+        )
 
     total_bytes = sum(language_totals.values())
     top_langs = sorted(language_totals.items(), key=lambda x: x[1], reverse=True)[:MAX_LANGS_DISPLAY]

@@ -25,13 +25,17 @@
 ## 📊 GitHub Stats
 
 <!-- LANG_STATS_START -->
-Most Used Language 暂无可用数据（可能受到 API 限流影响）
+<pre style="display:inline-block;margin:0;text-align:left;font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;line-height:1.2;">
+Most Used Language (all owned repos)
+
+暂无可用数据（可能受到 API 限流影响）
+</pre>
 <!-- LANG_STATS_END -->
 
 ---
 
 <sub><!-- UPDATE_TIME_START -->
-🕐 最近更新: 2026-04-19 12:26 (北京时间)
+🕐 最近更新: 2026-04-19 12:28 (北京时间)
 <!-- UPDATE_TIME_END --></sub>
 
 </div>
