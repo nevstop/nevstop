@@ -245,7 +245,6 @@ def replace_section(content, tag, replacement):
 
 def main():
     commit_count = get_yesterday_commits()
-    top_repos = get_top_repos(5)
     today = datetime.now(BJT).date()
 
     with open(README_PATH, "r", encoding="utf-8") as f:
@@ -253,9 +252,6 @@ def main():
 
     # Update ASCII cat
     content = replace_section(content, "CAT", generate_cat_section(commit_count, today))
-
-    # Update top repos list
-    content = replace_section(content, "REPOS", generate_repos_section(top_repos))
 
     # Update timestamp
     now_str = datetime.now(BJT).strftime("%Y-%m-%d %H:%M (北京时间)")
