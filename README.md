@@ -14,6 +14,14 @@
 
 > 🔧 LabVIEW 开发者
 
+<!-- VIPM_STATS_START -->
+<pre style="display:inline-block;margin:0;text-align:left;font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;line-height:1.2;">
+📦 VIPM 发布包 · vipm.io/publisher/nevstop
+
+（数据将在下次自动更新时填入）
+</pre>
+<!-- VIPM_STATS_END -->
+
 [![知乎](https://img.shields.io/badge/知乎-CSM专栏-0084FF?logo=zhihu&logoColor=white)](https://www.zhihu.com/column/c_1681072169147342848)&emsp;
 [![知乎](https://img.shields.io/badge/知乎-NEVSOTP--LAB-0084FF?logo=zhihu&logoColor=white)](https://www.zhihu.com/column/c_1770421455375126528)&emsp;
 [![VIPM](https://img.shields.io/badge/VIPM-NEVSTOP-FF6B35?logo=v&logoColor=white)](https://www.vipm.io/publisher/nevstop/)&emsp;

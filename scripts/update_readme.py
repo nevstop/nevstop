@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 
 GITHUB_USER = "nevstop"
 GITHUB_ORGS = ["NEVSTOP-LAB"]
+VIPM_PUBLISHER = "nevstop"
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 README_PATH = os.path.join(REPO_ROOT, "README.md")
 
@@ -20,6 +21,11 @@ MAX_LANGS_DISPLAY = 8
 LANG_BAR_WIDTH = 18
 MAX_REPOS_FOR_ACTIVITY_SCAN = 60
 MAX_REPOS_FOR_LANGUAGE_SCAN = 120
+VIPM_FETCH_TIMEOUT = 15   # seconds to wait for vipm.io response
+_VIPM_JSON_MAX_DEPTH = 6  # maximum recursion depth when walking VIPM JSON
+# fixed-width characters used by the install/star columns in the VIPM table:
+# "  💾 NNNNNN   ⭐ NNNN" → 2+2+6+3+2+4 = 22 chars after the name column
+_VIPM_STATS_COLS_WIDTH = 22
 
 # Beijing Time (UTC+8)
 BJT = timezone(timedelta(hours=8))
@@ -178,26 +184,61 @@ def _to_bjt(dt_str):
     return datetime.fromisoformat(dt_str.replace("Z", "+00:00")).astimezone(BJT)
 
 
-def get_yesterday_commits():
-    """Count the user's push-event commits from yesterday (Beijing time)."""
-    day_start, day_end = _get_yesterday_range()
+def _count_push_commits_from_url(events_url, day_start, day_end, seen_ids):
+    """Count push-event commits in the yesterday window from one events endpoint.
 
-    commit_count = 0
+    *seen_ids* (a ``set``) is updated in-place so callers can deduplicate across
+    multiple endpoints (e.g. user events + org events).
+    """
+    count = 0
     for page in range(1, MAX_EVENT_PAGES + 1):
-        events = github_api(
-            f"https://api.github.com/users/{GITHUB_USER}/events"
-            f"?per_page=100&page={page}"
-        )
+        events = github_api(f"{events_url}?per_page=100&page={page}")
         if not events:
             break
+        past_window = False
         for event in events:
+            event_time = _to_bjt(event["created_at"])
+            if event_time < day_start:
+                past_window = True
+                break
             if event["type"] != "PushEvent":
                 continue
-            event_time = _to_bjt(event["created_at"])
             if day_start <= event_time <= day_end:
-                commit_count += event.get("payload", {}).get("size", 0)
-            elif event_time < day_start:
-                return commit_count
+                event_id = event.get("id")
+                if event_id and event_id in seen_ids:
+                    continue
+                if event_id:
+                    seen_ids.add(event_id)
+                count += event.get("payload", {}).get("size", 0)
+        if past_window:
+            break
+    return count
+
+
+def get_yesterday_commits(orgs=None):
+    """Count the user's push-event commits from yesterday (Beijing time).
+
+    Scans the user's own event stream *and* each org's event stream so that
+    commits to private organisation repositories are also captured when the
+    workflow token has the necessary ``read:org`` permission.  Events are
+    deduplicated by event-ID to avoid double-counting.
+    """
+    day_start, day_end = _get_yesterday_range()
+    seen_ids: set = set()
+
+    # Personal / public events
+    commit_count = _count_push_commits_from_url(
+        f"https://api.github.com/users/{GITHUB_USER}/events",
+        day_start, day_end, seen_ids,
+    )
+
+    # Org-scoped events (requires auth; fails silently if not permitted)
+    for org in (orgs or []):
+        org_url = f"https://api.github.com/users/{GITHUB_USER}/events/orgs/{org}"
+        commit_count += _count_push_commits_from_url(
+            org_url, day_start, day_end, seen_ids
+        )
+
     return commit_count
 
 
@@ -430,6 +471,135 @@ def generate_language_stats_section(language_totals):
     return f'<pre style="{_PRE_STYLE}">\n{content}\n</pre>'
 
 
+# ── VIPM Package Stats ──────────────────────────────────────────────────────
+
+
+def _extract_packages_from_json(data, depth=0):
+    """Recursively search parsed JSON for a list of VIPM package objects."""
+    if depth > _VIPM_JSON_MAX_DEPTH:
+        return []
+    if isinstance(data, list) and data:
+        packages = []
+        for item in data:
+            if not isinstance(item, dict):
+                break
+            name = (
+                item.get("display_name")
+                or item.get("name")
+                or item.get("title")
+                or item.get("package_name")
+                or ""
+            )
+            installs = item.get("install_count") or item.get("installs") or 0
+            stars = item.get("star_count") or item.get("stars") or 0
+            if name and isinstance(installs, (int, float)):
+                packages.append({
+                    "name": str(name),
+                    "installs": int(installs),
+                    "stars": int(stars),
+                })
+        if packages:
+            return packages
+    if isinstance(data, dict):
+        for key in ("packages", "results", "items", "data", "products"):
+            val = data.get(key)
+            if val:
+                result = _extract_packages_from_json(val, depth + 1)
+                if result:
+                    return result
+        for val in data.values():
+            if isinstance(val, (dict, list)):
+                result = _extract_packages_from_json(val, depth + 1)
+                if result:
+                    return result
+    return []
+
+
+def get_vipm_packages():
+    """Fetch package stats from the VIPM publisher page.
+
+    Returns a list of dicts with keys ``name``, ``installs``, ``stars``.
+    Returns an empty list on any failure so the caller can skip the section.
+    """
+    url = f"https://www.vipm.io/publisher/{VIPM_PUBLISHER}/"
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+    }
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=VIPM_FETCH_TIMEOUT) as resp:
+            html = resp.read().decode("utf-8", errors="replace")
+    except Exception as exc:
+        print(f"⚠️  VIPM fetch error: {exc}")
+        return []
+
+    # Strategy 1: __NEXT_DATA__ JSON embedded by Next.js
+    match = re.search(
+        r'(?i)<script\s+id="__NEXT_DATA__"\s+type="application/json"\s*>([\s\S]*?)</script>',
+        html,
+    )
+    if match:
+        try:
+            pkgs = _extract_packages_from_json(json.loads(match.group(1)))
+            if pkgs:
+                print(f"ℹ️  VIPM: found {len(pkgs)} packages via __NEXT_DATA__")
+                return pkgs
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    # Strategy 2: any <script> block mentioning install_count
+    for script_match in re.finditer(r"(?i)<script[^>]*>([\s\S]*?)</script>", html):
+        body = script_match.group(1)
+        if '"install_count"' not in body and '"installs"' not in body:
+            continue
+        # Try to parse embedded JSON arrays
+        for json_match in re.finditer(r"(\[{[\s\S]*?}\])", body):
+            try:
+                pkgs = _extract_packages_from_json(json.loads(json_match.group(1)))
+                if pkgs:
+                    print(f"ℹ️  VIPM: found {len(pkgs)} packages via script scan")
+                    return pkgs
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+    print("⚠️  VIPM: could not parse package data from page")
+    return []
+
+
+def generate_vipm_section(packages):
+    """Build a compact VIPM package stats block for the README."""
+    if not packages:
+        return ""
+
+    packages_sorted = sorted(packages, key=lambda p: p["installs"], reverse=True)
+
+    name_col = max(len(p["name"]) for p in packages_sorted)
+    name_col = max(name_col, 12)
+
+    lines = [f"📦 VIPM 发布包 · vipm.io/publisher/{VIPM_PUBLISHER}", ""]
+    for pkg in packages_sorted:
+        name_padded = pkg["name"].ljust(name_col)
+        installs_str = f"{pkg['installs']:,}"
+        stars_str = f"{pkg['stars']:,}"
+        lines.append(f"{name_padded}  💾 {installs_str:>6}   ⭐ {stars_str:>4}")
+
+    sep = "─" * (name_col + _VIPM_STATS_COLS_WIDTH)
+    total_installs = sum(p["installs"] for p in packages_sorted)
+    total_stars = sum(p["stars"] for p in packages_sorted)
+    lines.append(sep)
+    summary_label = f"共 {len(packages_sorted)} 个包".ljust(name_col)
+    lines.append(
+        f"{summary_label}  💾 {total_installs:>6,}   ⭐ {total_stars:>4,}"
+    )
+
+    content = "\n".join(lines)
+    return f'<pre style="{_PRE_STYLE}">\n{content}\n</pre>'
+
+
 # ── README Updater ──────────────────────────────────────────────────────────
 
 
@@ -445,10 +615,12 @@ def replace_section(content, tag, replacement):
 
 
 def main():
-    commit_count = get_yesterday_commits()
+    orgs = _get_target_orgs()
+    commit_count = get_yesterday_commits(orgs=orgs)
     repos = get_owned_repos()
     has_commit_or_pr, has_issue = get_yesterday_repo_activity_flags(repos)
     language_totals = get_language_totals(repos)
+    vipm_packages = get_vipm_packages()
     now_bjt = datetime.now(BJT)
     today = now_bjt.date()
 
@@ -467,6 +639,11 @@ def main():
         ),
     )
 
+    # Update VIPM package stats (skip section update if no data)
+    vipm_section = generate_vipm_section(vipm_packages)
+    if vipm_section:
+        content = replace_section(content, "VIPM_STATS", vipm_section)
+
     # Update Most Used Language stats
     content = replace_section(content, "LANG_STATS", generate_language_stats_section(language_totals))
 
@@ -479,7 +656,8 @@ def main():
 
     print(
         f"✅ README updated — {commit_count} commits yesterday, "
-        f"{len(repos)} owned repos scanned"
+        f"{len(repos)} owned repos scanned, "
+        f"{len(vipm_packages)} VIPM packages"
     )
 
 
