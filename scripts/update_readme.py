@@ -96,6 +96,7 @@ def _cat_svg(expression, width=180, mini=False, with_phone=False):
     width: rendered SVG width in px.
     mini: when True, uses thinner lines for companion cats.
     with_phone: when True, draws a small phone accessory.
+    Unknown expressions fall back to the "happy" style.
     """
     stroke_w = 3 if mini else 4
     happy_eyes = (
@@ -125,23 +126,20 @@ def _cat_svg(expression, width=180, mini=False, with_phone=False):
         '<rect x="112" y="74" width="16" height="24" rx="2"/>'
         '<circle cx="120" cy="93" r="1.5" fill="currentColor"/>'
     ) if with_phone else ""
-    eye_markup = f"{eye}\n"
-    mouth_markup = f"{mouth}\n"
-    phone_markup = f"{phone}\n" if phone else ""
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="{width}" '
         f'fill="none" stroke="currentColor" stroke-width="{stroke_w}" '
-        'stroke-linecap="round" stroke-linejoin="round" role="presentation" aria-hidden="true">\n'
+        'stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="cat icon">\n'
         '<path d="M52 26 L66 12 L72 30"/>\n'
         '<path d="M88 30 L94 12 L108 26"/>\n'
         '<circle cx="80" cy="48" r="26"/>\n'
-        f"{eye_markup}{mouth_markup}"
+        f"{eye}\n{mouth}\n"
         '<path d="M80 70 L80 100"/>\n'
         '<path d="M60 84 Q80 96 100 84"/>\n'
         '<path d="M52 102 Q44 112 34 104 Q28 98 34 92"/>\n'
         '<path d="M68 104 L62 112"/>\n'
         '<path d="M92 104 L98 112"/>\n'
-        f"{phone_markup}</svg>"
+        f"{phone}\n</svg>"
     )
 
 
