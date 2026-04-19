@@ -12,7 +12,9 @@ from datetime import datetime, timedelta, timezone
 
 GITHUB_USER = "nevstop"
 GITHUB_ORGS = ["NEVSTOP-LAB"]
-README_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "README.md")
+REPO_ROOT = os.path.dirname(os.path.dirname(__file__))
+README_PATH = os.path.join(REPO_ROOT, "README.md")
+ASSETS_DIR = os.path.join(REPO_ROOT, "assets")
 
 MAX_EVENT_PAGES = 3       # pages of GitHub Events API to scan for commits
 MAX_LANGS_DISPLAY = 8
@@ -141,6 +143,22 @@ def _cat_svg(expression, width=180, mini=False, with_phone=False, aria_label="ca
         '<path d="M68 104 L62 112"/>\n'
         '<path d="M92 104 L98 112"/>\n'
         f"{phone}\n</svg>"
+    )
+
+
+def _write_svg_asset(filename, svg_content):
+    """Write SVG content to /assets for README image embedding."""
+    os.makedirs(ASSETS_DIR, exist_ok=True)
+    path = os.path.join(ASSETS_DIR, filename)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(svg_content)
+
+
+def _cat_asset_url(filename, today):
+    """Return a raw GitHub URL with a daily cache-busting query param."""
+    return (
+        f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_USER}/main/assets/{filename}"
+        f"?v={today.strftime('%Y%m%d')}"
     )
 
 
@@ -372,20 +390,55 @@ def generate_cat_section(commit_count, has_commit_or_pr=False, has_issue=False, 
         expression = "intense"
 
     msg = _pick_cat(cats, commit_count, today)
+    main_file = "readme-cat-main.svg"
+    mini_repo_file = "readme-cat-mini-repo.svg"
+    mini_issue_file = "readme-cat-mini-issue.svg"
+
+    _write_svg_asset(
+        main_file,
+        _cat_svg(
+            expression=expression,
+            width=190,
+            aria_label=f"main cat {expression} mood",
+        ),
+    )
+    _write_svg_asset(
+        mini_repo_file,
+        _cat_svg(
+            expression="happy",
+            width=88,
+            mini=True,
+            aria_label="mini cat for repo pull request or commit activity",
+        ),
+    )
+    _write_svg_asset(
+        mini_issue_file,
+        _cat_svg(
+            expression="focused",
+            width=88,
+            mini=True,
+            with_phone=True,
+            aria_label="mini cat for repo issue activity",
+        ),
+    )
+
+    main_url = _cat_asset_url(main_file, today)
+    mini_repo_url = _cat_asset_url(mini_repo_file, today)
+    mini_issue_url = _cat_asset_url(mini_issue_file, today)
     blocks = [
-        f'<div>{_cat_svg(expression=expression, width=190, aria_label=f"main cat {expression} mood")}</div>'
+        f'<div><img src="{main_url}" width="190" alt="main cat {expression} mood"/></div>'
     ]
 
     if has_commit_or_pr:
         blocks.append(
             '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">'
-            f'{_cat_svg(expression="happy", width=88, mini=True, aria_label="mini cat for repo pull request or commit activity")}'
+            f'<img src="{mini_repo_url}" width="88" alt="mini cat for repo pull request or commit activity"/>'
             "<sub>mini cat: repo pull request/commit</sub></div>"
         )
     if has_issue:
         blocks.append(
             '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">'
-            f'{_cat_svg(expression="focused", width=88, mini=True, with_phone=True, aria_label="mini cat for repo issue activity")}'
+            f'<img src="{mini_issue_url}" width="88" alt="mini cat for repo issue activity"/>'
             "<sub>mini cat: repo issue</sub></div>"
         )
 
