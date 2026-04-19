@@ -93,32 +93,34 @@ def _cat_svg(expression, width=180, mini=False, with_phone=False):
     """Return an inline SVG cat.
 
     expression: one of "sleepy", "happy", "focused", "intense".
+    width: rendered SVG width in px.
     mini: when True, uses thinner lines for companion cats.
     with_phone: when True, draws a small phone accessory.
     """
     stroke_w = 3 if mini else 4
+    happy_eyes = (
+        '<circle cx="64" cy="44" r="3" fill="currentColor"/>'
+        '<circle cx="96" cy="44" r="3" fill="currentColor"/>'
+    )
+    happy_mouth = '<path d="M72 58 Q80 66 88 58"/>'
     eye = {
         "sleepy": ('<line x1="60" y1="44" x2="68" y2="44"/>'
                    '<line x1="92" y1="44" x2="100" y2="44"/>'),
-        "happy": ('<circle cx="64" cy="44" r="3" fill="currentColor"/>'
-                  '<circle cx="96" cy="44" r="3" fill="currentColor"/>'),
-        "focused": ('<circle cx="64" cy="44" r="3" fill="currentColor"/>'
-                    '<circle cx="96" cy="44" r="3" fill="currentColor"/>'
-                    '<line x1="58" y1="36" x2="70" y2="34"/>'
-                    '<line x1="90" y1="34" x2="102" y2="36"/>'),
+        "happy": happy_eyes,
+        "focused": (
+            happy_eyes
+            + '<line x1="58" y1="36" x2="70" y2="34"/>'
+            + '<line x1="90" y1="34" x2="102" y2="36"/>'
+        ),
         "intense": ('<line x1="58" y1="42" x2="70" y2="46"/>'
                     '<line x1="90" y1="46" x2="102" y2="42"/>'),
-    }.get(
-        expression,
-        '<circle cx="64" cy="44" r="3" fill="currentColor"/>'
-        '<circle cx="96" cy="44" r="3" fill="currentColor"/>',
-    )
+    }.get(expression, happy_eyes)
     mouth = {
         "sleepy": '<path d="M74 58 Q80 62 86 58"/>',
-        "happy": '<path d="M72 58 Q80 66 88 58"/>',
+        "happy": happy_mouth,
         "focused": '<line x1="76" y1="58" x2="84" y2="58"/>',
         "intense": '<path d="M72 60 Q80 54 88 60"/>',
-    }.get(expression, '<path d="M72 58 Q80 66 88 58"/>')
+    }.get(expression, happy_mouth)
     phone = (
         '<rect x="112" y="74" width="16" height="24" rx="2"/>'
         '<circle cx="120" cy="93" r="1.5" fill="currentColor"/>'
