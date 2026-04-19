@@ -2,20 +2,9 @@
 
 <!-- CAT_START -->
 <pre style="display:inline-block;margin:0;text-align:left;font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;line-height:1.2;">
-main cat
- /\_/\
-( -.- ) zZ
- / >~
-
-mini cat: repo pull request/commit
- /\_/\
-(o.o )
- / ~~
-
-mini cat: repo issue
- /\_/\
-(o.o )
- / [#]
+ /\_/\      /\_/\     /\_/\
+( -.- ) zZ (o.o )    (o.o )
+ / >~       / ~~      / [#]
 </pre>
 
 💤 摸鱼模式 | 半梦半醒中~

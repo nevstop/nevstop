@@ -368,6 +368,24 @@ def _resolve_cat_state(commit_count, today):
     return expression, msg
 
 
+def _cats_side_by_side(cat_strings, gap=4):
+    """Render multiple ASCII cats horizontally on the same row.
+
+    Each cat_string is a multi-line block; rows are zipped side-by-side
+    separated by *gap* spaces.
+    """
+    split = [c.split("\n") for c in cat_strings]
+    height = max(len(rows) for rows in split)
+    width = [max(len(r) for r in rows) for rows in split]
+    padded = []
+    for i, rows in enumerate(split):
+        col = [r.ljust(width[i]) for r in rows]
+        col += [" " * width[i]] * (height - len(col))
+        padded.append(col)
+    sep = " " * gap
+    return "\n".join(sep.join(col[row] for col in padded) for row in range(height))
+
+
 def generate_cat_section(
     commit_count,
     has_commit_or_pr=False,
@@ -376,13 +394,13 @@ def generate_cat_section(
 ):
     """Build the ASCII cat block + status line for the given commit count."""
     expression, msg = _resolve_cat_state(commit_count, today)
-    lines = ["main cat", _cat_ascii(expression)]
+    cats = [_cat_ascii(expression)]
     if has_commit_or_pr:
-        lines.extend(["", "mini cat: repo pull request/commit", _mini_ascii_cat()])
+        cats.append(_mini_ascii_cat())
     if has_issue:
-        lines.extend(["", "mini cat: repo issue", _mini_ascii_cat(with_phone=True)])
+        cats.append(_mini_ascii_cat(with_phone=True))
 
-    cat_ascii = "\n".join(lines)
+    cat_ascii = _cats_side_by_side(cats)
     cat_html = f'<pre style="{_PRE_STYLE}">\n{cat_ascii}\n</pre>'
     return f"{cat_html}\n\n{msg}"
 
