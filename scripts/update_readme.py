@@ -145,7 +145,7 @@ def github_api(url):
 
 
 def _get_yesterday_range(now_bjt=None):
-    """Return yesterday's [start, end] in Beijing time."""
+    """Return a tuple of yesterday's (start, end) datetimes in Beijing time."""
     if now_bjt is None:
         now_bjt = datetime.now(BJT)
     yesterday = now_bjt - timedelta(days=1)
@@ -280,7 +280,7 @@ def get_yesterday_repo_activity_flags(repos):
 
 
 def get_language_totals(repos):
-    """Aggregate language byte counts from all owned repos."""
+    """Return a dict mapping language names to aggregated byte counts."""
     totals = defaultdict(int)
     for repo in repos:
         full_name = repo.get("full_name")
@@ -349,7 +349,7 @@ def generate_language_stats_section(language_totals):
     lines = ["Most Used Language (all owned repos)", ""]
     for lang, size in top_langs:
         ratio = size / total_bytes if total_bytes else 0
-        filled = max(1, int(round(ratio * LANG_BAR_WIDTH)))
+        filled = max(0, int(round(ratio * LANG_BAR_WIDTH)))
         bar = ("█" * min(filled, LANG_BAR_WIDTH)).ljust(LANG_BAR_WIDTH, "░")
         lines.append(f"{lang.ljust(max_name_len)}  {bar}  {ratio * 100:5.1f}%")
 
