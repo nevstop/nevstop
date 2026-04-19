@@ -1,20 +1,26 @@
 <div align="center">
 
 <!-- CAT_START -->
-<pre>
-    /\_/\
-   ( o_o )  **
-    > ^ <
-   /|   |\
-  (_|   |_)
-</pre>
+<div style="display:flex;justify-content:center;align-items:flex-end;gap:12px;flex-wrap:wrap;"><div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="190" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="main cat sleepy mood">
+<path d="M52 26 L66 12 L72 30"/>
+<path d="M88 30 L94 12 L108 26"/>
+<circle cx="80" cy="48" r="26"/>
+<line x1="60" y1="44" x2="68" y2="44"/><line x1="92" y1="44" x2="100" y2="44"/>
+<path d="M74 58 Q80 62 86 58"/>
+<path d="M80 70 L80 100"/>
+<path d="M60 84 Q80 96 100 84"/>
+<path d="M52 102 Q44 112 34 104 Q28 98 34 92"/>
+<path d="M68 104 L62 112"/>
+<path d="M92 104 L98 112"/>
 
-💻 专注模式 | 欢迎来到我的 GitHub 主页！
+</svg></div></div>
+
+💤 摸鱼模式 | 半梦半醒中~
 <!-- CAT_END -->
 
 ### 👋 Hi, I'm **NEVSTOP**
 
-> 🔧 LabVIEW 开发者 & 开源爱好者 | [CSM（Communicable State Machine）](https://github.com/NEVSTOP-LAB/Communicable-State-Machine)框架作者 | 用代码让测试测量更简单
+> 🔧 LabVIEW 开发者 | 用代码让测试测量更简单
 
 [![知乎](https://img.shields.io/badge/知乎-NEVSTOP--LAB-0084FF?logo=zhihu&logoColor=white)](https://www.zhihu.com/column/c_1681072169147342848)&emsp;
 [![VIPM](https://img.shields.io/badge/VIPM-NEVSTOP-FF6B35?logo=v&logoColor=white)](https://www.vipm.io/publisher/nevstop/)&emsp;
@@ -24,54 +30,18 @@
 
 ## 📊 GitHub Stats
 
-<img src="https://github-readme-stats.vercel.app/api?username=nevstop&show_icons=true&include_all_commits=true&theme=tokyonight&hide_border=true" height="165" />
-<img src="https://github-readme-stats.vercel.app/api/top-langs/?username=nevstop&layout=compact&langs_count=8&theme=tokyonight&hide_border=true" height="165" />
+<!-- LANG_STATS_START -->
+<pre style="display:inline-block;margin:0;text-align:left;font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;line-height:1.2;">
+Most Used Language (all owned repos)
 
-<br>
-
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="https://streak-stats.demolab.com/?user=nevstop&theme=default&hide_border=true" />
-  <img src="https://streak-stats.demolab.com/?user=nevstop&theme=tokyonight&hide_border=true" />
-</picture>
-
-<br>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://github-readme-activity-graph.vercel.app/graph?username=nevstop&theme=tokyo-night" />
-  <source media="(prefers-color-scheme: light)" srcset="https://github-readme-activity-graph.vercel.app/graph?username=nevstop&theme=xcode" />
-  <img src="https://github-readme-activity-graph.vercel.app/graph?username=nevstop&theme=tokyo-night" />
-</picture>
-
-<br>
-
-### 🏢 NEVSTOP-LAB
-
-<img src="https://github-readme-stats.vercel.app/api?username=NEVSTOP-LAB&show_icons=true&include_all_commits=true&theme=tokyonight&hide_border=true" height="165" />
-<img src="https://github-readme-stats.vercel.app/api/top-langs/?username=NEVSTOP-LAB&layout=compact&langs_count=8&theme=tokyonight&hide_border=true" height="165" />
+暂无可用数据（可能受到 API 限流影响）
+</pre>
+<!-- LANG_STATS_END -->
 
 ---
 
-## ⭐ Top Starred Repos
-
-<!-- REPOS_START -->
-🥇 **[NEVSTOP-LAB/Communicable-State-Machine](https://github.com/NEVSTOP-LAB/Communicable-State-Machine)** ⭐ 51  
-   LabVIEW Application Framework extended from JKI State Machine(JKISM)
-
-🥈 **[NEVSTOP-LAB/LabVIEW-UI-XCtl](https://github.com/NEVSTOP-LAB/LabVIEW-UI-XCtl)** ⭐ 39  
-   LabVIEW XControls for UI
-
-🥉 **[NEVSTOP-LAB/LabVIEW-GlobalStop-Library](https://github.com/NEVSTOP-LAB/LabVIEW-GlobalStop-Library)** ⭐ 13  
-   Simple stop mechanism for parallel loops in LabVIEW
-
-4. **[NEVSTOP-LAB/LabVIEW-QuickDrops-Manager](https://github.com/NEVSTOP-LAB/LabVIEW-QuickDrops-Manager)** ⭐ 11  
-   LabVIEW QuickDrops Manager, search & execute quickdrops by keyword
-
-5. **[NEVSTOP-LAB/CSM-Continuous-Meausrement-and-Logging](https://github.com/NEVSTOP-LAB/CSM-Continuous-Meausrement-and-Logging)** ⭐ 10  
-   DAQ framework & Modules based on Communicable State Machine(CSM)
-<!-- REPOS_END -->
-
----
-
-<sub><!-- UPDATE_TIME_START -->🕐 Dashboard 由 GitHub Actions 每天北京时间凌晨 1:00 自动更新<!-- UPDATE_TIME_END --></sub>
+<sub><!-- UPDATE_TIME_START -->
+🕐 最近更新: 2026-04-19 16:31 (北京时间)
+<!-- UPDATE_TIME_END --></sub>
 
 </div>
