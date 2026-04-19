@@ -155,7 +155,7 @@ def _get_yesterday_range(now_bjt=None):
 
 
 def _to_bjt(dt_str):
-    """Convert GitHub timestamp to Beijing time."""
+    """Convert an ISO 8601 UTC timestamp (e.g. ...Z) to Beijing time."""
     return datetime.fromisoformat(dt_str.replace("Z", "+00:00")).astimezone(BJT)
 
 
@@ -243,7 +243,7 @@ def get_owned_repos():
 
 
 def get_yesterday_repo_activity_flags(repos):
-    """Check whether owned repos had commit/PR activity or issues yesterday."""
+    """Return (has_commit_or_pr, has_issue) for yesterday's repo events in BJT."""
     day_start, day_end = _get_yesterday_range()
     has_commit_or_pr = False
     has_issue = False
@@ -280,7 +280,7 @@ def get_yesterday_repo_activity_flags(repos):
 
 
 def get_language_totals(repos):
-    """Return a dict mapping language names to aggregated byte counts."""
+    """Aggregate repo language bytes from GitHub API; return empty dict on no data."""
     totals = defaultdict(int)
     for repo in repos:
         full_name = repo.get("full_name")
@@ -349,7 +349,7 @@ def generate_language_stats_section(language_totals):
     lines = ["Most Used Language (all owned repos)", ""]
     for lang, size in top_langs:
         ratio = size / total_bytes if total_bytes else 0
-        filled = max(0, int(round(ratio * LANG_BAR_WIDTH)))
+        filled = int(round(ratio * LANG_BAR_WIDTH))
         bar = ("█" * filled).ljust(LANG_BAR_WIDTH, "░")
         lines.append(f"{lang.ljust(max_name_len)}  {bar}  {ratio * 100:5.1f}%")
 
