@@ -17,6 +17,8 @@ README_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "README.m
 MAX_EVENT_PAGES = 3       # pages of GitHub Events API to scan for commits
 MAX_LANGS_DISPLAY = 8
 LANG_BAR_WIDTH = 18
+MAX_REPOS_FOR_ACTIVITY_SCAN = 60
+MAX_REPOS_FOR_LANGUAGE_SCAN = 120
 
 # Beijing Time (UTC+8)
 BJT = timezone(timedelta(hours=8))
@@ -73,7 +75,7 @@ _CATS_ULTRA = [
 ]
 
 
-_CAT_PRE_STYLE = (
+_PRE_STYLE = (
     "display:inline-block;"
     "margin:0;"
     "text-align:left;"
@@ -243,12 +245,23 @@ def get_owned_repos():
 
 
 def get_yesterday_repo_activity_flags(repos):
-    """Return (has_commit_or_pr, has_issue) for yesterday's repo events in BJT."""
+    """Return repo-wide (commit_or_pr_activity, issue_activity) flags for yesterday in BJT."""
     day_start, day_end = _get_yesterday_range()
-    has_commit_or_pr = False
-    has_issue = False
+    has_repo_commit_or_pr_activity = False
+    has_repo_issue_activity = False
 
-    for repo in repos:
+    repo_candidates = sorted(
+        repos,
+        key=lambda repo: repo.get("pushed_at") or "",
+        reverse=True,
+    )[:MAX_REPOS_FOR_ACTIVITY_SCAN]
+    if len(repos) > len(repo_candidates):
+        print(
+            f"ℹ️  Activity scan capped: {len(repo_candidates)}/{len(repos)} repos "
+            "(most recently pushed)"
+        )
+
+    for repo in repo_candidates:
         full_name = repo.get("full_name")
         if not full_name:
             continue
@@ -269,25 +282,37 @@ def get_yesterday_repo_activity_flags(repos):
                 continue
 
             if event_type in ("PushEvent", "PullRequestEvent"):
-                has_commit_or_pr = True
+                has_repo_commit_or_pr_activity = True
             elif event_type == "IssuesEvent":
-                has_issue = True
+                has_repo_issue_activity = True
 
-            if has_commit_or_pr and has_issue:
-                return has_commit_or_pr, has_issue
+            if has_repo_commit_or_pr_activity and has_repo_issue_activity:
+                return has_repo_commit_or_pr_activity, has_repo_issue_activity
 
-    return has_commit_or_pr, has_issue
+    return has_repo_commit_or_pr_activity, has_repo_issue_activity
 
 
 def get_language_totals(repos):
     """Aggregate repo language bytes from GitHub API; return empty dict on no data."""
     totals = defaultdict(int)
-    for repo in repos:
+    repo_candidates = sorted(
+        repos,
+        key=lambda repo: repo.get("stargazers_count", 0),
+        reverse=True,
+    )[:MAX_REPOS_FOR_LANGUAGE_SCAN]
+    if len(repos) > len(repo_candidates):
+        print(
+            f"ℹ️  Language scan capped: {len(repo_candidates)}/{len(repos)} repos "
+            "(highest stars first)"
+        )
+
+    for repo in repo_candidates:
         full_name = repo.get("full_name")
         if not full_name:
             continue
         lang_data = github_api(f"https://api.github.com/repos/{full_name}/languages")
         if not isinstance(lang_data, dict):
+            print(f"⚠️  Skip language stats for {full_name}: unexpected response payload")
             continue
         for lang, size in lang_data.items():
             if isinstance(size, int) and size > 0:
@@ -315,17 +340,17 @@ def generate_cat_section(commit_count, has_commit_or_pr=False, has_issue=False, 
         cats = _CATS_ULTRA
 
     body, msg = _pick_cat(cats, commit_count, today)
-    blocks = [f'<pre style="{_CAT_PRE_STYLE}">\n{body}\n</pre>']
+    blocks = [f'<pre style="{_PRE_STYLE}">\n{body}\n</pre>']
 
     if has_commit_or_pr:
         blocks.append(
-            f'<div><pre style="{_CAT_PRE_STYLE}">\n{_tiny_cat_sit()}\n</pre>'
-            "<sub>mini cat: commits/PR</sub></div>"
+            f'<div><pre style="{_PRE_STYLE}">\n{_tiny_cat_sit()}\n</pre>'
+            "<sub>mini cat: repo commit/PR</sub></div>"
         )
     if has_issue:
         blocks.append(
-            f'<div><pre style="{_CAT_PRE_STYLE}">\n{_tiny_cat_phone()}\n</pre>'
-            "<sub>mini cat: issue call</sub></div>"
+            f'<div><pre style="{_PRE_STYLE}">\n{_tiny_cat_phone()}\n</pre>'
+            "<sub>mini cat: repo issue</sub></div>"
         )
 
     cat_html = (
@@ -341,9 +366,7 @@ def generate_language_stats_section(language_totals):
     """Build Most Used Language section based on all owned repos."""
     if not language_totals:
         return (
-            '<pre style="display:inline-block;margin:0;text-align:left;'
-            "font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;"
-            'line-height:1.2;">\n'
+            f'<pre style="{_PRE_STYLE}">\n'
             "Most Used Language (all owned repos)\n\n"
             "暂无可用数据（可能受到 API 限流影响）\n"
             "</pre>"
@@ -361,11 +384,7 @@ def generate_language_stats_section(language_totals):
         lines.append(f"{lang.ljust(max_name_len)}  {bar}  {ratio * 100:5.1f}%")
 
     content = "\n".join(lines)
-    return (
-        '<pre style="display:inline-block;margin:0;text-align:left;'
-        "font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;"
-        f'line-height:1.2;">\n{content}\n</pre>'
-    )
+    return f'<pre style="{_PRE_STYLE}">\n{content}\n</pre>'
 
 
 # ── README Updater ──────────────────────────────────────────────────────────
