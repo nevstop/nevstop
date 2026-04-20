@@ -2,9 +2,9 @@
 
 <!-- CAT_START -->
 <pre style="display:inline-block;margin:0;text-align:left;font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;line-height:1.2;">
- /\_/\         /\_/\
-( -.- ) zZ    (o.o )
- / >~          / ~~ 
+ /\_/\         /\_/\     /\_/\
+( -.- ) zZ    (o.o )    (o.o )
+ / >~          / ~~      / [#]
 </pre>
 
 💤 摸鱼模式 | 昨天没有提交代码哦~
@@ -29,21 +29,21 @@
 <pre style="display:inline-block;margin:0;text-align:left;font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;line-height:1.2;">
 Most Used Language (all owned repos)
 
-LabVIEW     ███████████████░░░   83.4%
-Python      ██░░░░░░░░░░░░░░░░   12.1%
-HTML        ░░░░░░░░░░░░░░░░░░    1.5%
-JavaScript  ░░░░░░░░░░░░░░░░░░    1.0%
-SCSS        ░░░░░░░░░░░░░░░░░░    1.0%
-Shell       ░░░░░░░░░░░░░░░░░░    0.8%
-Ruby        ░░░░░░░░░░░░░░░░░░    0.1%
-Dockerfile  ░░░░░░░░░░░░░░░░░░    0.1%
+LabVIEW     █████████████████░   93.4%
+Python      █░░░░░░░░░░░░░░░░░    3.2%
+HTML        ░░░░░░░░░░░░░░░░░░    1.6%
+C           ░░░░░░░░░░░░░░░░░░    0.8%
+JavaScript  ░░░░░░░░░░░░░░░░░░    0.3%
+Inno Setup  ░░░░░░░░░░░░░░░░░░    0.2%
+C#          ░░░░░░░░░░░░░░░░░░    0.2%
+SCSS        ░░░░░░░░░░░░░░░░░░    0.2%
 </pre>
 <!-- LANG_STATS_END -->
 
 ---
 
 <sub><!-- UPDATE_TIME_START -->
-🕐 最近更新: 2026-04-20 01:17 (北京时间)
+🕐 最近更新: 2026-04-20 09:42 (北京时间)
 <!-- UPDATE_TIME_END --></sub>
 
 </div>
