@@ -96,7 +96,7 @@ def _is_bot(login: str) -> bool:
     Matches:
     - logins that contain ``[bot]`` (e.g. ``github-actions[bot]``)
     - logins that end with ``-bot`` or ``_bot``
-    - logins in the known-bots allow-list
+    - logins in the known-bots blocklist
     """
     if not login:
         return True
@@ -697,6 +697,12 @@ def _extract_packages_from_json(data, depth=0):
     return []
 
 
+# Candidate field names used by vipm.io for publisher aggregate stats (module-level to avoid per-call allocation)
+_VIPM_COUNT_KEYS   = ("package_count", "total_packages", "num_packages", "packages_count")
+_VIPM_INSTALL_KEYS = ("total_installs", "total_install_count", "install_count", "installs")
+_VIPM_STAR_KEYS    = ("total_stars", "total_star_count", "star_count", "stars")
+
+
 def _extract_publisher_stats_from_json(data, depth=0):
     """Search parsed JSON for publisher-level aggregate stats.
 
@@ -708,14 +714,9 @@ def _extract_publisher_stats_from_json(data, depth=0):
     if not isinstance(data, dict):
         return {}
 
-    # Candidate field names used by vipm.io for publisher aggregate stats
-    _COUNT_KEYS   = ("package_count", "total_packages", "num_packages", "packages_count")
-    _INSTALL_KEYS = ("total_installs", "total_install_count", "install_count", "installs")
-    _STAR_KEYS    = ("total_stars", "total_star_count", "star_count", "stars")
-
-    pkg_val     = next((data[k] for k in _COUNT_KEYS   if k in data and isinstance(data[k], int)), None)
-    install_val = next((data[k] for k in _INSTALL_KEYS if k in data and isinstance(data[k], int)), None)
-    star_val    = next((data[k] for k in _STAR_KEYS    if k in data and isinstance(data[k], int)), None)
+    pkg_val     = next((data[k] for k in _VIPM_COUNT_KEYS   if k in data and isinstance(data[k], int)), None)
+    install_val = next((data[k] for k in _VIPM_INSTALL_KEYS if k in data and isinstance(data[k], int)), None)
+    star_val    = next((data[k] for k in _VIPM_STAR_KEYS    if k in data and isinstance(data[k], int)), None)
 
     if pkg_val and install_val:
         return {
