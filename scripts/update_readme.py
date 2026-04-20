@@ -77,6 +77,37 @@ _CATS_ULTRA = [
     "🎯 传说级  | 昨天提交了 {n} 个 commit！！",
 ]
 
+# ── Bot / AI Account Filter ─────────────────────────────────────────────────
+
+# Known bot/AI logins (case-insensitive exact match after lower())
+_KNOWN_BOTS = frozenset({
+    "github-copilot", "copilot",
+    "dependabot", "dependabot-preview",
+    "renovate", "renovate-bot",
+    "snyk-bot", "whitesource-bolt-for-github",
+    "imgbot", "allcontributors-bot",
+    "pre-commit-ci", "deepsource-autofix",
+})
+
+
+def _is_bot(login: str) -> bool:
+    """Return True if *login* belongs to a bot or AI account.
+
+    Matches:
+    - logins that contain ``[bot]`` (e.g. ``github-actions[bot]``)
+    - logins that end with ``-bot`` or ``_bot``
+    - logins in the known-bots allow-list
+    """
+    if not login:
+        return True
+    lower = login.lower()
+    return (
+        "[bot]" in lower
+        or lower.endswith("-bot")
+        or lower.endswith("_bot")
+        or lower in _KNOWN_BOTS
+    )
+
 
 _PRE_STYLE = (
     "display:inline-block;"
@@ -383,16 +414,23 @@ def get_yesterday_repo_activity_flags(repos):
     """Return repo-wide activity info for yesterday in BJT.
 
     Returns a tuple:
-    ``(has_commit_or_pr, has_issue, pr_actors, issue_actors)``
+    ``(has_commit_or_pr, has_issue, pr_actors, issue_actors,
+       closed_pr_count, closed_issue_count)``
 
-    *pr_actors* and *issue_actors* are sets of GitHub login names that
-    opened pull requests / issues in any of the scanned repos yesterday.
+    *pr_actors* and *issue_actors* are sets of **human** GitHub login names
+    (bots/AI accounts are filtered out) that opened pull requests / issues in
+    any of the scanned repos yesterday.
+
+    *closed_pr_count* and *closed_issue_count* are the total numbers of PRs /
+    Issues that were closed in any scanned repo yesterday.
     """
     day_start, day_end = _get_yesterday_range()
     has_repo_commit_or_pr_activity = False
     has_repo_issue_activity = False
     pr_actors: set = set()
     issue_actors: set = set()
+    closed_pr_count = 0
+    closed_issue_count = 0
 
     repo_candidates = sorted(
         repos,
@@ -429,18 +467,26 @@ def get_yesterday_repo_activity_flags(repos):
             payload_action = event.get("payload", {}).get("action")
             if event_type in ("PushEvent", "PullRequestEvent"):
                 has_repo_commit_or_pr_activity = True
-                if (
-                    event_type == "PullRequestEvent"
-                    and payload_action == "opened"
-                    and actor_login
-                ):
-                    pr_actors.add(actor_login)
+                if event_type == "PullRequestEvent":
+                    if payload_action == "opened" and actor_login and not _is_bot(actor_login):
+                        pr_actors.add(actor_login)
+                    elif payload_action == "closed":
+                        closed_pr_count += 1
             elif event_type == "IssuesEvent":
                 has_repo_issue_activity = True
-                if payload_action == "opened" and actor_login:
+                if payload_action == "opened" and actor_login and not _is_bot(actor_login):
                     issue_actors.add(actor_login)
+                elif payload_action == "closed":
+                    closed_issue_count += 1
 
-    return has_repo_commit_or_pr_activity, has_repo_issue_activity, pr_actors, issue_actors
+    return (
+        has_repo_commit_or_pr_activity,
+        has_repo_issue_activity,
+        pr_actors,
+        issue_actors,
+        closed_pr_count,
+        closed_issue_count,
+    )
 
 
 def get_language_totals(repos):
@@ -478,20 +524,30 @@ def get_language_totals(repos):
 
 
 def _resolve_cat_state(commit_count, today):
-    """Resolve cat expression and status message."""
+    """Resolve cat expression and status message.
+
+    Thresholds are intentionally wide so that every state is reachable even
+    when commit velocity is high (e.g. with AI-assisted development):
+
+    * 0          → sleepy / idle
+    * 1 – 8      → happy / light
+    * 9 – 20     → focused
+    * 21 – 40    → heavy
+    * 41+        → ultra
+    """
     if today is None:
         today = datetime.now(BJT).date()
 
     if commit_count == 0:
         cats = _CATS_IDLE
         expression = "sleepy"
-    elif commit_count <= 3:
+    elif commit_count <= 8:
         cats = _CATS_LIGHT
         expression = "happy"
-    elif commit_count <= 8:
+    elif commit_count <= 20:
         cats = _CATS_FOCUS
         expression = "focused"
-    elif commit_count <= 15:
+    elif commit_count <= 40:
         cats = _CATS_HEAVY
         expression = "intense"
     else:
@@ -527,6 +583,8 @@ def generate_cat_section(
     today=None,
     pr_actors=None,
     issue_actors=None,
+    closed_pr_count=0,
+    closed_issue_count=0,
 ):
     """Build the ASCII cat block + status line for the given commit count.
 
@@ -543,18 +601,31 @@ def generate_cat_section(
     cat_ascii_art = _cats_side_by_side(cats)
     cat_html = f'<pre style="{_PRE_STYLE}">\n{cat_ascii_art}\n</pre>'
 
+    # Build the status lines: commit status + optional closed-PR/Issue summary
+    status_parts = [msg]
+    close_parts = []
+    if closed_pr_count > 0:
+        close_parts.append(f"{closed_pr_count} 个 PR")
+    if closed_issue_count > 0:
+        close_parts.append(f"{closed_issue_count} 个 Issue")
+    if close_parts:
+        status_parts.append(f"📌 关闭了 {'、'.join(close_parts)}")
+    status_block = "\n".join(status_parts)
+
     # Build an HTML comment block with machine-readable context that is
     # invisible in rendered markdown but visible when reading the source.
     pr_names = ", ".join(sorted(pr_actors)) if pr_actors else "无"
     issue_names = ", ".join(sorted(issue_actors)) if issue_actors else "无"
     comment = (
         f"<!-- Yesterday Stats (昨日数据统计): commits={commit_count}"
+        f", closed PRs={closed_pr_count}"
+        f", closed issues={closed_issue_count}"
         f", PR authors (PR提交者)={pr_names}"
         f", issue authors (issue提交者)={issue_names}"
         " -->"
     )
 
-    return f"{cat_html}\n\n{msg}\n{comment}"
+    return f"{cat_html}\n\n{status_block}\n{comment}"
 
 
 def generate_language_stats_section(language_totals):
@@ -626,11 +697,68 @@ def _extract_packages_from_json(data, depth=0):
     return []
 
 
+def _extract_publisher_stats_from_json(data, depth=0):
+    """Search parsed JSON for publisher-level aggregate stats.
+
+    Returns a dict with keys ``pkg_count``, ``total_installs``, ``total_stars``
+    when found, otherwise an empty dict.
+    """
+    if depth > _VIPM_JSON_MAX_DEPTH:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+
+    # Candidate field names used by vipm.io for publisher aggregate stats
+    _COUNT_KEYS   = ("package_count", "total_packages", "num_packages", "packages_count")
+    _INSTALL_KEYS = ("total_installs", "total_install_count", "install_count", "installs")
+    _STAR_KEYS    = ("total_stars", "total_star_count", "star_count", "stars")
+
+    pkg_val     = next((data[k] for k in _COUNT_KEYS   if k in data and isinstance(data[k], int)), None)
+    install_val = next((data[k] for k in _INSTALL_KEYS if k in data and isinstance(data[k], int)), None)
+    star_val    = next((data[k] for k in _STAR_KEYS    if k in data and isinstance(data[k], int)), None)
+
+    if pkg_val and install_val:
+        return {
+            "pkg_count": pkg_val,
+            "total_installs": install_val,
+            "total_stars": star_val or 0,
+        }
+
+    for val in data.values():
+        if isinstance(val, (dict, list)):
+            sub = _extract_publisher_stats_from_json(val, depth + 1)
+            if sub:
+                return sub
+    return {}
+
+
+def _synth_packages(pkg_count, total_installs, total_stars):
+    """Return a synthesised package list representing the given totals."""
+    per_i, rem_i = divmod(total_installs, pkg_count)
+    per_s, rem_s = divmod(total_stars, pkg_count)
+    return [
+        {
+            "name": f"package-{i}",
+            "installs": per_i + (1 if i < rem_i else 0),
+            "stars": per_s + (1 if i < rem_s else 0),
+        }
+        for i in range(pkg_count)
+    ]
+
+
 def get_vipm_packages():
     """Fetch package stats from the VIPM publisher page.
 
     Returns a list of dicts with keys ``name``, ``installs``, ``stars``.
     Returns an empty list on any failure so the caller can skip the section.
+
+    Parse strategies (tried in order):
+    1. ``__NEXT_DATA__`` JSON (Next.js) — individual package objects
+    2. ``__NEXT_DATA__`` JSON — publisher-level aggregate fields
+    3. Any ``<script>`` block containing ``install_count`` / ``installs``
+    4. HTML text pattern scan: looks for "N packages", "N installs", "N stars"
+       as they appear in the visible page text.
+    5. HTML attribute heuristic (legacy fallback).
     """
     url = f"https://www.vipm.io/publisher/{VIPM_PUBLISHER}/"
     headers = {
@@ -648,26 +776,36 @@ def get_vipm_packages():
         print(f"⚠️  VIPM fetch error: {exc}")
         return []
 
-    # Strategy 1: __NEXT_DATA__ JSON embedded by Next.js
-    match = re.search(
+    # Strategy 1 & 2: __NEXT_DATA__ JSON embedded by Next.js
+    next_data_match = re.search(
         r'(?i)<script\s+id="__NEXT_DATA__"\s+type="application/json"\s*>([\s\S]*?)</script>',
         html,
     )
-    if match:
+    if next_data_match:
         try:
-            pkgs = _extract_packages_from_json(json.loads(match.group(1)))
+            next_json = json.loads(next_data_match.group(1))
+            # Strategy 1: individual package list
+            pkgs = _extract_packages_from_json(next_json)
             if pkgs:
-                print(f"ℹ️  VIPM: found {len(pkgs)} packages via __NEXT_DATA__")
+                print(f"ℹ️  VIPM: found {len(pkgs)} packages via __NEXT_DATA__ (package list)")
                 return pkgs
+            # Strategy 2: publisher-level aggregate stats
+            agg = _extract_publisher_stats_from_json(next_json)
+            if agg and agg["pkg_count"] > 0:
+                print(
+                    f"ℹ️  VIPM: found aggregate stats via __NEXT_DATA__: "
+                    f"{agg['pkg_count']} pkgs, {agg['total_installs']} installs, "
+                    f"{agg['total_stars']} stars"
+                )
+                return _synth_packages(agg["pkg_count"], agg["total_installs"], agg["total_stars"])
         except (json.JSONDecodeError, ValueError):
             pass
 
-    # Strategy 2: any <script> block mentioning install_count
+    # Strategy 3: any <script> block mentioning install_count
     for script_match in re.finditer(r"(?i)<script[^>]*>([\s\S]*?)</script>", html):
         body = script_match.group(1)
         if '"install_count"' not in body and '"installs"' not in body:
             continue
-        # Try to parse embedded JSON arrays
         for json_match in re.finditer(r"(\[{[\s\S]*?}\])", body):
             try:
                 pkgs = _extract_packages_from_json(json.loads(json_match.group(1)))
@@ -677,11 +815,30 @@ def get_vipm_packages():
             except (json.JSONDecodeError, ValueError):
                 pass
 
+    # Strategy 4: plain-text pattern scan on the visible HTML content.
+    # Strip tags to get a rough text rendering and search for patterns like:
+    #   "16 packages", "34,571 installs", "69 stars"
+    plain_text = re.sub(r"<[^>]+>", " ", html)
+    # Collapse whitespace so multi-line patterns match easily
+    plain_text = re.sub(r"\s+", " ", plain_text)
+
+    pkg_text_m     = re.search(r"(\d[\d,]*)\s+packages?",  plain_text, re.IGNORECASE)
+    install_text_m = re.search(r"(\d[\d,]*)\s+installs?",  plain_text, re.IGNORECASE)
+    star_text_m    = re.search(r"(\d[\d,]*)\s+stars?",     plain_text, re.IGNORECASE)
+
+    if pkg_text_m and install_text_m:
+        pkg_count_t     = int(pkg_text_m.group(1).replace(",", ""))
+        total_installs_t = int(install_text_m.group(1).replace(",", ""))
+        total_stars_t    = int(star_text_m.group(1).replace(",", "")) if star_text_m else 0
+        if pkg_count_t > 0:
+            print(
+                f"ℹ️  VIPM: found via text scan — {pkg_count_t} packages, "
+                f"{total_installs_t} installs, {total_stars_t} stars"
+            )
+            return _synth_packages(pkg_count_t, total_installs_t, total_stars_t)
+
     print("⚠️  VIPM: could not parse package data from page")
-    # Strategy 3: HTML attribute / text pattern scan
-    # Look for numeric totals embedded directly in the HTML, e.g.:
-    #   data-install-count="1234"  or  installs: 1234
-    #   as a coarse last-resort so we surface *something*.
+    # Strategy 5: HTML attribute / data-* heuristic (legacy last-resort)
     install_match = re.search(
         r'(?:data-install[_-]count|install[_-]count|installs)["\s:=]+([0-9,]+)',
         html, re.IGNORECASE,
@@ -690,9 +847,6 @@ def get_vipm_packages():
         r'(?:data-star[_-]count|star[_-]count|stars)["\s:=]+([0-9,]+)',
         html, re.IGNORECASE,
     )
-    # Count package entries via a simple heuristic.
-    # These CSS class fragments target typical VIPM publisher-page markup.
-    # If vipm.io redesigns its HTML, add new class names here.
     pkg_count = len(re.findall(
         r'(?:package-card|pkg-title|package__title|vipm-package)',
         html, re.IGNORECASE,
@@ -704,19 +858,7 @@ def get_vipm_packages():
             f"ℹ️  VIPM: HTML heuristic — {pkg_count} packages, "
             f"{total_installs} installs, {total_stars} stars"
         )
-        # Return a synthesised package list so callers see the right totals.
-        # Each entry uses a placeholder name because the HTML heuristic only
-        # extracts aggregate numbers, not individual package metadata.
-        per_pkg_installs, installs_remainder = divmod(total_installs, pkg_count)
-        per_pkg_stars, stars_remainder = divmod(total_stars, pkg_count)
-        return [
-            {
-                "name": f"package-{i}",
-                "installs": per_pkg_installs + (1 if i < installs_remainder else 0),
-                "stars": per_pkg_stars + (1 if i < stars_remainder else 0),
-            }
-            for i in range(pkg_count)
-        ]
+        return _synth_packages(pkg_count, total_installs, total_stars)
 
     print("⚠️  VIPM: all parse strategies exhausted — no data available")
     return []
@@ -790,7 +932,7 @@ def main():
     orgs = _get_target_orgs()
     commit_count = get_yesterday_commits(orgs=orgs)
     repos = get_owned_repos()
-    has_commit_or_pr, has_issue, pr_actors, issue_actors = get_yesterday_repo_activity_flags(repos)
+    has_commit_or_pr, has_issue, pr_actors, issue_actors, closed_pr_count, closed_issue_count = get_yesterday_repo_activity_flags(repos)
     language_totals = get_language_totals(repos)
     vipm_packages = get_vipm_packages()
     now_bjt = datetime.now(BJT)
@@ -810,6 +952,8 @@ def main():
             today=today,
             pr_actors=pr_actors,
             issue_actors=issue_actors,
+            closed_pr_count=closed_pr_count,
+            closed_issue_count=closed_issue_count,
         ),
     )
 
