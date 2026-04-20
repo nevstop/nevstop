@@ -2,12 +2,13 @@
 
 <!-- CAT_START -->
 <pre style="display:inline-block;margin:0;text-align:left;font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;line-height:1.2;">
- /\_/\         /\_/\     /\_/\
-( -.- ) zZ    (o.o )    (o.o )
- / >~          / ~~      / [#]
+ /\_/\      /\_/\     /\_/\
+( >.< )    (o.o )    (o.o )
+ / >!!      / [P]     / [!]
 </pre>
 
-💤 摸鱼模式 | 昨天没有提交代码哦~
+🔥 疯狂加班 | 昨天提交了 9 个 commit！
+<!-- Yesterday Stats (昨日数据统计): commits=9, PR authors (PR提交者)=Copilot, issue authors (issue提交者)=github-actions[bot] -->
 <!-- CAT_END -->
 
 ### 👋 Hi, I'm **NEVSTOP**
@@ -29,7 +30,7 @@
 <pre style="display:inline-block;margin:0;text-align:left;font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;line-height:1.2;">
 Most Used Language (all owned repos)
 
-LabVIEW     █████████████████░   93.4%
+LabVIEW     █████████████████░   93.3%
 Python      █░░░░░░░░░░░░░░░░░    3.2%
 HTML        ░░░░░░░░░░░░░░░░░░    1.6%
 C           ░░░░░░░░░░░░░░░░░░    0.8%
@@ -43,7 +44,7 @@ SCSS        ░░░░░░░░░░░░░░░░░░    0.2%
 ---
 
 <sub><!-- UPDATE_TIME_START -->
-🕐 最近更新: 2026-04-20 09:42 (北京时间)
+🕐 最近更新: 2026-04-20 15:13 (北京时间)
 <!-- UPDATE_TIME_END --></sub>
 
 </div>
