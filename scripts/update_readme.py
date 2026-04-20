@@ -7,6 +7,7 @@ import random
 import re
 import urllib.error
 import urllib.request
+import zlib
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
@@ -117,9 +118,9 @@ def _cat_ascii(expression, today=None):
     eyes = eye_map.get(expression, "( ^.^ )")
     actions = _CAT_ACTIONS.get(expression, [" / >~"])
     if today is not None:
-        action = random.Random(today.toordinal() + hash(expression) % 997).choice(actions)
-        # 997 is a small prime used to offset the per-expression seed so that
-        # different moods do not always land on the same action on the same day.
+        # zlib.adler32 gives a stable, process-independent integer from the
+        # expression name so the seed is reproducible across Python runs.
+        action = random.Random(today.toordinal() + zlib.adler32(expression.encode())).choice(actions)
     else:
         action = actions[0]
     return "\n".join([" /\\_/\\", eyes, action])
@@ -224,8 +225,9 @@ def get_yesterday_commits(orgs=None):
 
     Tries the GitHub GraphQL ``contributionsCollection`` API first so that
     **both public and private commits** are counted correctly.  Falls back to
-    scanning the REST Events API (which may miss some private events) when the
-    GraphQL call is unavailable or returns zero.
+    scanning the REST Events API (which may miss some private events) only
+    when the GraphQL call fails (returns ``None``); a GraphQL result of 0 is
+    treated as a valid count and returned directly without falling back.
 
     Scans the user's own event stream *and* each org's event stream so that
     commits to private organisation repositories are also captured when the
@@ -236,7 +238,7 @@ def get_yesterday_commits(orgs=None):
 
     # ── Primary: GraphQL contributionsCollection (includes private commits) ──
     graphql_count = _get_commits_via_graphql(day_start, day_end)
-    if graphql_count > 0:
+    if graphql_count is not None:
         print(f"ℹ️  Commit count via GraphQL: {graphql_count} (includes private)")
         return graphql_count
 
@@ -261,13 +263,14 @@ def get_yesterday_commits(orgs=None):
 def _get_commits_via_graphql(day_start, day_end):
     """Use the GitHub GraphQL API to count commits in [day_start, day_end].
 
-    Returns the commit count, or 0 on any failure (e.g. no token / no
-    ``repo`` scope).  Private contributions are included when the token has
-    the ``repo`` scope.
+    Returns the commit count on success, or ``None`` on any failure (e.g.
+    no token / no ``repo`` scope) so that callers can distinguish a genuine
+    zero from an error.  Private contributions are included when the token
+    has the ``repo`` scope.
     """
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
-        return 0
+        return None
 
     # contributionsCollection requires ISO-8601 with timezone
     from_str = day_start.isoformat()
@@ -313,7 +316,7 @@ query($login: String!, $from: DateTime!, $to: DateTime!) {
         return total + restricted
     except Exception as exc:
         print(f"⚠️  GraphQL commit query failed: {exc}")
-        return 0
+        return None
 
 
 # ── Repo Helpers ────────────────────────────────────────────────────────────
@@ -423,13 +426,18 @@ def get_yesterday_repo_activity_flags(repos):
                 continue
 
             actor_login = event.get("actor", {}).get("login", "")
+            payload_action = event.get("payload", {}).get("action")
             if event_type in ("PushEvent", "PullRequestEvent"):
                 has_repo_commit_or_pr_activity = True
-                if event_type == "PullRequestEvent" and actor_login:
+                if (
+                    event_type == "PullRequestEvent"
+                    and payload_action == "opened"
+                    and actor_login
+                ):
                     pr_actors.add(actor_login)
             elif event_type == "IssuesEvent":
                 has_repo_issue_activity = True
-                if actor_login:
+                if payload_action == "opened" and actor_login:
                     issue_actors.add(actor_login)
 
     return has_repo_commit_or_pr_activity, has_repo_issue_activity, pr_actors, issue_actors
@@ -699,10 +707,14 @@ def get_vipm_packages():
         # Return a synthesised package list so callers see the right totals.
         # Each entry uses a placeholder name because the HTML heuristic only
         # extracts aggregate numbers, not individual package metadata.
-        per_pkg_installs = total_installs // max(pkg_count, 1)
-        per_pkg_stars = total_stars // max(pkg_count, 1)
+        per_pkg_installs, installs_remainder = divmod(total_installs, pkg_count)
+        per_pkg_stars, stars_remainder = divmod(total_stars, pkg_count)
         return [
-            {"name": f"package-{i}", "installs": per_pkg_installs, "stars": per_pkg_stars}
+            {
+                "name": f"package-{i}",
+                "installs": per_pkg_installs + (1 if i < installs_remainder else 0),
+                "stars": per_pkg_stars + (1 if i < stars_remainder else 0),
+            }
             for i in range(pkg_count)
         ]
 
