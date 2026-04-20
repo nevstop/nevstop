@@ -94,44 +94,48 @@ def _pick_cat(cats, commit_count, today):
     return msg
 
 
-def _cat_ascii(expression):
-    """Return a main ASCII cat based on mood expression."""
-    return {
-        "sleepy": "\n".join([
-            " /\\_/\\",
-            "( -.- ) zZ",
-            " / >~",
-        ]),
-        "happy": "\n".join([
-            " /\\_/\\",
-            "( ^.^ )",
-            " / >~",
-        ]),
-        "focused": "\n".join([
-            " /\\_/\\",
-            "( o.o )",
-            " / >~",
-        ]),
-        "intense": "\n".join([
-            " /\\_/\\",
-            "( >.< )",
-            " / >~",
-        ]),
-    }.get(
-        expression,
-        "\n".join(
-            [
-                " /\\_/\\",
-                "( ^.^ )",
-                " / >~",
-            ]
-        ),
-    )
+_CAT_ACTIONS = {
+    "sleepy": [" / >~", " \\ <~", " / >zz"],
+    "happy":  [" / >~", " \\ <~", " / >♪"],
+    "focused":[" / >~", " \\ <~", " / >!!"],
+    "intense":[" / >!!", " / >~!", " \\ <!"],
+}
 
 
-def _mini_ascii_cat(with_phone=False):
-    """Return a companion mini ASCII cat."""
-    paw = "[#]" if with_phone else "~~"
+def _cat_ascii(expression, today=None):
+    """Return a main ASCII cat based on mood expression.
+
+    *today* (a ``date``) is used as a deterministic seed so the action
+    variant changes day-by-day without being truly random.
+    """
+    eye_map = {
+        "sleepy":  "( -.- ) zZ",
+        "happy":   "( ^.^ )",
+        "focused": "( o.o )",
+        "intense": "( >.< )",
+    }
+    eyes = eye_map.get(expression, "( ^.^ )")
+    actions = _CAT_ACTIONS.get(expression, [" / >~"])
+    if today is not None:
+        action = random.Random(today.toordinal() + hash(expression) % 997).choice(actions)
+    else:
+        action = actions[0]
+    return "\n".join([" /\\_/\\", eyes, action])
+
+
+def _mini_ascii_cat(item=None):
+    """Return a companion mini ASCII cat.
+
+    *item* controls what the cat is holding:
+    - ``None``  → nothing (tail ``~~``)
+    - ``'pr'``  → holding a PR sign (``[P]``)
+    - ``'bug'`` → holding a bug/issue card (``[!]``)
+    """
+    paw_map = {
+        "pr":  "[P]",
+        "bug": "[!]",
+    }
+    paw = paw_map.get(item, "~~")
     return "\n".join(
         [
             " /\\_/\\",
@@ -216,15 +220,27 @@ def _count_push_commits_from_url(events_url, day_start, day_end, seen_ids):
 def get_yesterday_commits(orgs=None):
     """Count the user's push-event commits from yesterday (Beijing time).
 
+    Tries the GitHub GraphQL ``contributionsCollection`` API first so that
+    **both public and private commits** are counted correctly.  Falls back to
+    scanning the REST Events API (which may miss some private events) when the
+    GraphQL call is unavailable or returns zero.
+
     Scans the user's own event stream *and* each org's event stream so that
     commits to private organisation repositories are also captured when the
     workflow token has the necessary ``read:org`` permission.  Events are
     deduplicated by event-ID to avoid double-counting.
     """
     day_start, day_end = _get_yesterday_range()
+
+    # ── Primary: GraphQL contributionsCollection (includes private commits) ──
+    graphql_count = _get_commits_via_graphql(day_start, day_end)
+    if graphql_count > 0:
+        print(f"ℹ️  Commit count via GraphQL: {graphql_count} (includes private)")
+        return graphql_count
+
+    # ── Fallback: REST Events API ─────────────────────────────────────────────
     seen_ids: set = set()
 
-    # Personal / public events
     commit_count = _count_push_commits_from_url(
         f"https://api.github.com/users/{GITHUB_USER}/events",
         day_start, day_end, seen_ids,
@@ -238,6 +254,64 @@ def get_yesterday_commits(orgs=None):
         )
 
     return commit_count
+
+
+def _get_commits_via_graphql(day_start, day_end):
+    """Use the GitHub GraphQL API to count commits in [day_start, day_end].
+
+    Returns the commit count, or 0 on any failure (e.g. no token / no
+    ``repo`` scope).  Private contributions are included when the token has
+    the ``repo`` scope.
+    """
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        return 0
+
+    # contributionsCollection requires ISO-8601 with timezone
+    from_str = day_start.isoformat()
+    to_str = day_end.isoformat()
+
+    query = """
+query($login: String!, $from: DateTime!, $to: DateTime!) {
+  user(login: $login) {
+    contributionsCollection(from: $from, to: $to) {
+      totalCommitContributions
+      restrictedContributionsCount
+    }
+  }
+}
+"""
+    payload = json.dumps({
+        "query": query,
+        "variables": {
+            "login": GITHUB_USER,
+            "from": from_str,
+            "to": to_str,
+        },
+    }).encode()
+
+    req = urllib.request.Request(
+        "https://api.github.com/graphql",
+        data=payload,
+        headers={
+            "Authorization": f"bearer {token}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+        cc = data["data"]["user"]["contributionsCollection"]
+        total = cc.get("totalCommitContributions", 0)
+        restricted = cc.get("restrictedContributionsCount", 0)
+        print(
+            f"ℹ️  GraphQL commits: totalCommit={total}, restricted={restricted}"
+        )
+        return total + restricted
+    except Exception as exc:
+        print(f"⚠️  GraphQL commit query failed: {exc}")
+        return 0
 
 
 # ── Repo Helpers ────────────────────────────────────────────────────────────
@@ -301,10 +375,19 @@ def get_owned_repos():
 
 
 def get_yesterday_repo_activity_flags(repos):
-    """Return repo-wide (commit_or_pr_activity, issue_activity) flags for yesterday in BJT."""
+    """Return repo-wide activity info for yesterday in BJT.
+
+    Returns a tuple:
+    ``(has_commit_or_pr, has_issue, pr_actors, issue_actors)``
+
+    *pr_actors* and *issue_actors* are sets of GitHub login names that
+    opened pull requests / issues in any of the scanned repos yesterday.
+    """
     day_start, day_end = _get_yesterday_range()
     has_repo_commit_or_pr_activity = False
     has_repo_issue_activity = False
+    pr_actors: set = set()
+    issue_actors: set = set()
 
     repo_candidates = sorted(
         repos,
@@ -337,15 +420,17 @@ def get_yesterday_repo_activity_flags(repos):
             if event_time > day_end:
                 continue
 
+            actor_login = event.get("actor", {}).get("login", "")
             if event_type in ("PushEvent", "PullRequestEvent"):
                 has_repo_commit_or_pr_activity = True
+                if event_type == "PullRequestEvent" and actor_login:
+                    pr_actors.add(actor_login)
             elif event_type == "IssuesEvent":
                 has_repo_issue_activity = True
+                if actor_login:
+                    issue_actors.add(actor_login)
 
-            if has_repo_commit_or_pr_activity and has_repo_issue_activity:
-                return has_repo_commit_or_pr_activity, has_repo_issue_activity
-
-    return has_repo_commit_or_pr_activity, has_repo_issue_activity
+    return has_repo_commit_or_pr_activity, has_repo_issue_activity, pr_actors, issue_actors
 
 
 def get_language_totals(repos):
@@ -430,18 +515,36 @@ def generate_cat_section(
     has_commit_or_pr=False,
     has_issue=False,
     today=None,
+    pr_actors=None,
+    issue_actors=None,
 ):
-    """Build the ASCII cat block + status line for the given commit count."""
-    expression, msg = _resolve_cat_state(commit_count, today)
-    cats = [_cat_ascii(expression)]
-    if has_commit_or_pr:
-        cats.append(_mini_ascii_cat())
-    if has_issue:
-        cats.append(_mini_ascii_cat(with_phone=True))
+    """Build the ASCII cat block + status line for the given commit count.
 
-    cat_ascii = _cats_side_by_side(cats)
-    cat_html = f'<pre style="{_PRE_STYLE}">\n{cat_ascii}\n</pre>'
-    return f"{cat_html}\n\n{msg}"
+    HTML comments are appended below the status line so the raw source
+    carries useful context without affecting the rendered markdown.
+    """
+    expression, msg = _resolve_cat_state(commit_count, today)
+    cats = [_cat_ascii(expression, today=today)]
+    if has_commit_or_pr:
+        cats.append(_mini_ascii_cat(item="pr"))
+    if has_issue:
+        cats.append(_mini_ascii_cat(item="bug"))
+
+    cat_ascii_art = _cats_side_by_side(cats)
+    cat_html = f'<pre style="{_PRE_STYLE}">\n{cat_ascii_art}\n</pre>'
+
+    # Build an HTML comment block with machine-readable context that is
+    # invisible in rendered markdown but visible when reading the source.
+    pr_names = ", ".join(sorted(pr_actors)) if pr_actors else "无"
+    issue_names = ", ".join(sorted(issue_actors)) if issue_actors else "无"
+    comment = (
+        f"<!-- 昨日数据统计: commit={commit_count}"
+        f", PR提交者={pr_names}"
+        f", issue提交者={issue_names}"
+        " -->"
+    )
+
+    return f"{cat_html}\n\n{msg}\n{comment}"
 
 
 def generate_language_stats_section(language_totals):
@@ -565,6 +668,36 @@ def get_vipm_packages():
                 pass
 
     print("⚠️  VIPM: could not parse package data from page")
+    # Strategy 3: HTML attribute / text pattern scan
+    # Look for numeric totals embedded directly in the HTML, e.g.:
+    #   data-install-count="1234"  or  installs: 1234
+    #   as a coarse last-resort so we surface *something*.
+    install_match = re.search(
+        r'(?:data-install[_-]count|install[_-]count|installs)["\s:=]+([0-9,]+)',
+        html, re.IGNORECASE,
+    )
+    star_match = re.search(
+        r'(?:data-star[_-]count|star[_-]count|stars)["\s:=]+([0-9,]+)',
+        html, re.IGNORECASE,
+    )
+    # Count package entries via a simple heuristic
+    pkg_count = len(re.findall(r'(?:package-card|pkg-title|package__title)', html, re.IGNORECASE))
+    if install_match and pkg_count > 0:
+        total_installs = int(install_match.group(1).replace(",", ""))
+        total_stars = int(star_match.group(1).replace(",", "")) if star_match else 0
+        print(
+            f"ℹ️  VIPM: HTML heuristic — {pkg_count} packages, "
+            f"{total_installs} installs, {total_stars} stars"
+        )
+        # Return synthesised package list (one entry per detected package)
+        per_pkg_installs = total_installs // max(pkg_count, 1)
+        per_pkg_stars = total_stars // max(pkg_count, 1)
+        return [
+            {"name": f"pkg{i}", "installs": per_pkg_installs, "stars": per_pkg_stars}
+            for i in range(pkg_count)
+        ]
+
+    print("⚠️  VIPM: all parse strategies exhausted — no data available")
     return []
 
 
@@ -636,7 +769,7 @@ def main():
     orgs = _get_target_orgs()
     commit_count = get_yesterday_commits(orgs=orgs)
     repos = get_owned_repos()
-    has_commit_or_pr, has_issue = get_yesterday_repo_activity_flags(repos)
+    has_commit_or_pr, has_issue, pr_actors, issue_actors = get_yesterday_repo_activity_flags(repos)
     language_totals = get_language_totals(repos)
     vipm_packages = get_vipm_packages()
     now_bjt = datetime.now(BJT)
@@ -654,6 +787,8 @@ def main():
             has_commit_or_pr,
             has_issue,
             today=today,
+            pr_actors=pr_actors,
+            issue_actors=issue_actors,
         ),
     )
 
