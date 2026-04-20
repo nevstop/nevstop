@@ -118,6 +118,8 @@ def _cat_ascii(expression, today=None):
     actions = _CAT_ACTIONS.get(expression, [" / >~"])
     if today is not None:
         action = random.Random(today.toordinal() + hash(expression) % 997).choice(actions)
+        # 997 is a small prime used to offset the per-expression seed so that
+        # different moods do not always land on the same action on the same day.
     else:
         action = actions[0]
     return "\n".join([" /\\_/\\", eyes, action])
@@ -538,9 +540,9 @@ def generate_cat_section(
     pr_names = ", ".join(sorted(pr_actors)) if pr_actors else "无"
     issue_names = ", ".join(sorted(issue_actors)) if issue_actors else "无"
     comment = (
-        f"<!-- 昨日数据统计: commit={commit_count}"
-        f", PR提交者={pr_names}"
-        f", issue提交者={issue_names}"
+        f"<!-- Yesterday Stats (昨日数据统计): commits={commit_count}"
+        f", PR authors (PR提交者)={pr_names}"
+        f", issue authors (issue提交者)={issue_names}"
         " -->"
     )
 
@@ -680,8 +682,13 @@ def get_vipm_packages():
         r'(?:data-star[_-]count|star[_-]count|stars)["\s:=]+([0-9,]+)',
         html, re.IGNORECASE,
     )
-    # Count package entries via a simple heuristic
-    pkg_count = len(re.findall(r'(?:package-card|pkg-title|package__title)', html, re.IGNORECASE))
+    # Count package entries via a simple heuristic.
+    # These CSS class fragments target typical VIPM publisher-page markup.
+    # If vipm.io redesigns its HTML, add new class names here.
+    pkg_count = len(re.findall(
+        r'(?:package-card|pkg-title|package__title|vipm-package)',
+        html, re.IGNORECASE,
+    ))
     if install_match and pkg_count > 0:
         total_installs = int(install_match.group(1).replace(",", ""))
         total_stars = int(star_match.group(1).replace(",", "")) if star_match else 0
@@ -689,11 +696,13 @@ def get_vipm_packages():
             f"ℹ️  VIPM: HTML heuristic — {pkg_count} packages, "
             f"{total_installs} installs, {total_stars} stars"
         )
-        # Return synthesised package list (one entry per detected package)
+        # Return a synthesised package list so callers see the right totals.
+        # Each entry uses a placeholder name because the HTML heuristic only
+        # extracts aggregate numbers, not individual package metadata.
         per_pkg_installs = total_installs // max(pkg_count, 1)
         per_pkg_stars = total_stars // max(pkg_count, 1)
         return [
-            {"name": f"pkg{i}", "installs": per_pkg_installs, "stars": per_pkg_stars}
+            {"name": f"package-{i}", "installs": per_pkg_installs, "stars": per_pkg_stars}
             for i in range(pkg_count)
         ]
 
