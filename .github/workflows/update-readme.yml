@@ -23,7 +23,7 @@ jobs:
 
       - name: Update README
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.SYNC_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
         run: python scripts/update_readme.py
 
       - name: Commit and push
