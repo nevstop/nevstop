@@ -885,9 +885,13 @@ def _is_prime(n):
 
 
 def _render_progress_bar(value, goal, width):
-    """Render a fixed-width unicode progress bar."""
+    """Render a fixed-width unicode progress bar.
+
+    ``goal`` values <= 0 are coerced to 1 to keep rendering safe.
+    """
     if goal <= 0:
         goal = 1
+    # Clamp into [0.0, 1.0] so the bar never overflows its fixed width.
     ratio = max(0.0, min(1.0, value / goal))
     filled = int(round(ratio * width))
     return f"{'█' * filled}{'░' * (width - filled)}"
