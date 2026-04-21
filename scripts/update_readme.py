@@ -157,6 +157,8 @@ _SPECIAL_DAY_OUTFITS = {
     "12-25": "🎅",  # 圣诞节
 }
 
+_GHOST_CAT_SEED_OFFSET = 404
+
 
 def _cat_ascii(
     expression,
@@ -897,7 +899,7 @@ def _resolve_main_cat_overlays(commit_count, today, activity, repos):
         "midnight_cat": bool(late_night > 0),
         "ninja_cat": bool(activity.get("has_ninja_event")),
         "party_cat": bool(activity.get("merged_pr_count", 0) >= 2),
-        "ghost_cat": random.Random(today.toordinal() + 404).random() < 0.01,
+        "ghost_cat": random.Random(today.toordinal() + _GHOST_CAT_SEED_OFFSET).random() < 0.01,
         "alien_cat": _is_prime(commit_count),
     }
 
@@ -990,7 +992,8 @@ def generate_cat_section(
         cats.append(_mini_ascii_cat(item="👻", face="( ._. )"))
 
     max_extra_roles = 5
-    cats = [cats[0]] + cats[1:1 + max_extra_roles]
+    # Keep the main cat and limit companion roles to avoid crowding.
+    cats = [cats[0]] + cats[1:max_extra_roles + 1]
 
     cat_ascii_art = _cats_side_by_side(cats)
     cat_html = f'<pre style="{_PRE_STYLE}">\n{overlays["weather"]}\n{cat_ascii_art}\n</pre>'
