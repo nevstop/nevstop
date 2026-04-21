@@ -2,9 +2,9 @@
 
 <!-- CAT_START -->
 <pre style="display:inline-block;margin:0;text-align:left;font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;line-height:1.2;">
- /\_/\      /\_/\     /\_/\
-( ^.^ )    (o.o )    (o.o )
- / >♪       / [P]     / [!]
+ /\_/\ 
+( ^.^ )
+ / >♪  
 </pre>
 
 ✨ 活力模式 | 昨天提交了 4 个 commit
@@ -14,7 +14,7 @@
 ### 👋 Hi, I'm **NEVSTOP**
 
 <!-- VIPM_INLINE_START -->
-> 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): 16 packages, 34,611 installs, 69 stars，今日新增 installs: +28；Stars: +0
+> 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): 16 packages, 34,613 installs, 69 stars，今日新增 installs: +2；Stars: +0
 <!-- VIPM_INLINE_END -->
 
 [![知乎](https://img.shields.io/badge/知乎-CSM专栏-0084FF?logo=zhihu&logoColor=white)](https://www.zhihu.com/column/c_1681072169147342848)&emsp;
@@ -44,7 +44,7 @@ SCSS        ░░░░░░░░░░░░░░░░░░    0.2%
 ---
 
 <sub><!-- UPDATE_TIME_START -->
-🕐 最近更新: 2026-04-21 01:29 (北京时间)
+🕐 最近更新: 2026-04-21 08:42 (北京时间)
 <!-- UPDATE_TIME_END --></sub>
 
 </div>
