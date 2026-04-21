@@ -217,7 +217,7 @@ def _mini_ascii_cat(item=None, face="(o.o )"):
         "pr":  "[P]",
         "bug": "[!]",
     }
-    paw = paw_map.get(item, item or "~~")
+    paw = paw_map.get(item) if item in paw_map else (item if item is not None else "~~")
     return "\n".join(
         [
             " /\\_/\\",
@@ -543,6 +543,7 @@ def get_yesterday_repo_activity_flags(repos):
                     size = payload.get("size") or 0
                     if isinstance(size, int) and size > 0:
                         hourly_commits[event_time.hour] += size
+                        # Cap repeated timestamp expansion to keep memory bounded.
                         commit_times.extend([event_time] * min(size, 20))
                     full_name_lower = (full_name or "").lower()
                     if any(k in full_name_lower for k in _LINUX_KEYWORDS):
@@ -559,7 +560,7 @@ def get_yesterday_repo_activity_flags(repos):
                             continue
                         msg = str(c.get("message") or "")
                         lowered = msg.lower()
-                        if any(k in lowered for k in _BUGFIX_KEYWORDS) or "修复" in msg:
+                        if any(k in lowered for k in _BUGFIX_KEYWORDS):
                             has_bugfix_commit = True
                         if (
                             any(k in lowered for k in _LINUX_KEYWORDS)
@@ -798,11 +799,35 @@ def _get_total_commit_contributions():
     if not token:
         return 0
     try:
-        query = """
+        profile_query = """
 query($login: String!) {
   user(login: $login) {
     createdAt
-    contributionsCollection(from: "2008-01-01T00:00:00Z", to: "2100-01-01T00:00:00Z") {
+  }
+}
+"""
+        profile_payload = json.dumps({
+            "query": profile_query,
+            "variables": {"login": GITHUB_USER},
+        }).encode()
+        profile_req = urllib.request.Request(
+            "https://api.github.com/graphql",
+            data=profile_payload,
+            headers={
+                "Authorization": f"bearer {token}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(profile_req, timeout=15) as resp:
+            profile_data = json.loads(resp.read())
+        created_at = profile_data["data"]["user"]["createdAt"]
+        now_utc = datetime.now(timezone.utc).isoformat()
+
+        query = """
+query($login: String!, $from: DateTime!, $to: DateTime!) {
+  user(login: $login) {
+    contributionsCollection(from: $from, to: $to) {
       totalCommitContributions
       restrictedContributionsCount
     }
@@ -811,7 +836,11 @@ query($login: String!) {
 """
         payload = json.dumps({
             "query": query,
-            "variables": {"login": GITHUB_USER},
+            "variables": {
+                "login": GITHUB_USER,
+                "from": created_at,
+                "to": now_utc,
+            },
         }).encode()
         req = urllib.request.Request(
             "https://api.github.com/graphql",
@@ -890,6 +919,7 @@ def _resolve_main_cat_overlays(commit_count, today, activity, repos):
         weather = "☁️"
     elif max_hour >= 10:
         weather = "⛈️"
+    # 2.5 is a "burst factor": max hour within 2.5x of average => stable output.
     elif avg_hour and (max_hour / avg_hour) <= 2.5:
         weather = "☀️"
     else:
