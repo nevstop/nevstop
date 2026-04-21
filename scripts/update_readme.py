@@ -593,9 +593,9 @@ def generate_cat_section(
     """
     expression, msg = _resolve_cat_state(commit_count, today)
     cats = [_cat_ascii(expression, today=today)]
-    if has_commit_or_pr:
+    if bool(pr_actors) or closed_pr_count > 0:
         cats.append(_mini_ascii_cat(item="pr"))
-    if has_issue:
+    if bool(issue_actors) or closed_issue_count > 0:
         cats.append(_mini_ascii_cat(item="bug"))
 
     cat_ascii_art = _cats_side_by_side(cats)
