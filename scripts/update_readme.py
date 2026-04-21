@@ -209,7 +209,7 @@ def _mini_ascii_cat(item=None, face="(o.o )"):
         "pr":  "[P]",
         "bug": "[!]",
     }
-    paw = paw_map.get(item, "~~")
+    paw = paw_map.get(item, item or "~~")
     return "\n".join(
         [
             " /\\_/\\",
