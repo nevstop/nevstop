@@ -158,6 +158,12 @@ _SPECIAL_DAY_OUTFITS = {
 }
 
 _GHOST_CAT_SEED_OFFSET = 404
+_GHOST_CAT_PROBABILITY = 0.01
+_MAX_EXTRA_ROLE_CATS = 5
+_BUGFIX_KEYWORDS = ("fix", "bug", "修复")
+_LINUX_KEYWORDS = ("docker", "linux", "k8s", "container")
+_LATE_NIGHT_HOURS = tuple(range(2, 6))
+_DAYTIME_HOURS = tuple(range(8, 19))
 
 
 def _cat_ascii(
@@ -496,8 +502,6 @@ def get_yesterday_repo_activity_flags(repos):
     has_linux_related_commit = False
     has_external_review_on_user_pr = False
     has_ninja_event = False
-    keyword_fix = ("fix", "bug", "修复")
-    keyword_linux = ("docker", "linux", "k8s", "container")
 
     repo_candidates = sorted(
         repos,
@@ -541,7 +545,7 @@ def get_yesterday_repo_activity_flags(repos):
                         hourly_commits[event_time.hour] += size
                         commit_times.extend([event_time] * min(size, 20))
                     full_name_lower = (full_name or "").lower()
-                    if any(k in full_name_lower for k in keyword_linux):
+                    if any(k in full_name_lower for k in _LINUX_KEYWORDS):
                         has_linux_related_commit = True
                     commit_repo_names.add(full_name)
                     ref = payload.get("ref") or ""
@@ -555,11 +559,11 @@ def get_yesterday_repo_activity_flags(repos):
                             continue
                         msg = str(c.get("message") or "")
                         lowered = msg.lower()
-                        if any(k in lowered for k in keyword_fix) or "修复" in msg:
+                        if any(k in lowered for k in _BUGFIX_KEYWORDS) or "修复" in msg:
                             has_bugfix_commit = True
                         if (
-                            any(k in lowered for k in keyword_linux)
-                            or any(k in str(c.get("url") or "").lower() for k in keyword_linux)
+                            any(k in lowered for k in _LINUX_KEYWORDS)
+                            or any(k in str(c.get("url") or "").lower() for k in _LINUX_KEYWORDS)
                         ):
                             has_linux_related_commit = True
                 if event_type == "PullRequestEvent":
@@ -852,8 +856,8 @@ def _resolve_main_cat_overlays(commit_count, today, activity, repos):
         hat = "🧢"
 
     hourly = activity.get("hourly_commits", {})
-    late_night = sum(v for h, v in hourly.items() if 2 <= int(h) <= 5)
-    day_sum = sum(v for h, v in hourly.items() if 8 <= int(h) <= 18)
+    late_night = sum(v for h, v in hourly.items() if int(h) in _LATE_NIGHT_HOURS)
+    day_sum = sum(v for h, v in hourly.items() if int(h) in _DAYTIME_HOURS)
     eye_override = None
     if late_night > 0:
         eye_override = "( == )"
@@ -899,7 +903,10 @@ def _resolve_main_cat_overlays(commit_count, today, activity, repos):
         "midnight_cat": bool(late_night > 0),
         "ninja_cat": bool(activity.get("has_ninja_event")),
         "party_cat": bool(activity.get("merged_pr_count", 0) >= 2),
-        "ghost_cat": random.Random(today.toordinal() + _GHOST_CAT_SEED_OFFSET).random() < 0.01,
+        "ghost_cat": (
+            random.Random(today.toordinal() + _GHOST_CAT_SEED_OFFSET).random()
+            < _GHOST_CAT_PROBABILITY
+        ),
         "alien_cat": _is_prime(commit_count),
     }
 
@@ -991,9 +998,8 @@ def generate_cat_section(
     if easter["ghost_cat"]:
         cats.append(_mini_ascii_cat(item="👻", face="( ._. )"))
 
-    max_extra_roles = 5
     # Keep the main cat and limit companion roles to avoid crowding.
-    cats = [cats[0]] + cats[1:max_extra_roles + 1]
+    cats = [cats[0]] + cats[1:_MAX_EXTRA_ROLE_CATS + 1]
 
     cat_ascii_art = _cats_side_by_side(cats)
     cat_html = f'<pre style="{_PRE_STYLE}">\n{overlays["weather"]}\n{cat_ascii_art}\n</pre>'
