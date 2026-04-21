@@ -164,6 +164,9 @@ _BUGFIX_KEYWORDS = ("fix", "bug", "修复")
 _LINUX_KEYWORDS = ("docker", "linux", "k8s", "container")
 _LATE_NIGHT_HOURS = tuple(range(2, 6))
 _DAYTIME_HOURS = tuple(range(8, 19))
+_WEEKLY_COMMIT_GOAL = 20
+_WEEKLY_PROGRESS_WIDTH = 12
+_STREAK_PAW_MAX_DOTS = 14
 
 
 def _cat_ascii(
@@ -731,8 +734,10 @@ def _cats_side_by_side(cat_strings, gap=4):
     return "\n".join(sep.join(col[row] for col in padded) for row in range(height))
 
 
-def _get_commit_streak_days():
-    """Estimate consecutive contribution days ending yesterday."""
+def _get_commit_streak_and_week_total(today=None):
+    """Estimate streak days (ending yesterday) and this-week commit total."""
+    if today is None:
+        today = datetime.now(BJT).date()
     token = os.environ.get("GITHUB_TOKEN")
     if token:
         try:
@@ -770,7 +775,7 @@ query($login: String!, $from: DateTime!, $to: DateTime!) {
             )
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read())
-            days = set()
+            day_counts = {}
             weeks = (
                 data.get("data", {})
                 .get("user", {})
@@ -780,17 +785,22 @@ query($login: String!, $from: DateTime!, $to: DateTime!) {
             )
             for week in weeks:
                 for d in week.get("contributionDays", []):
-                    if d.get("contributionCount", 0) > 0:
-                        days.add(d.get("date"))
+                    day_counts[d.get("date")] = int(d.get("contributionCount", 0) or 0)
             streak = 0
             cursor = (datetime.now(BJT) - timedelta(days=1)).date()
-            while cursor.isoformat() in days:
+            while day_counts.get(cursor.isoformat(), 0) > 0:
                 streak += 1
                 cursor -= timedelta(days=1)
-            return streak
+            week_start = today - timedelta(days=today.weekday())
+            week_total = 0
+            cursor = week_start
+            while cursor <= today:
+                week_total += day_counts.get(cursor.isoformat(), 0)
+                cursor += timedelta(days=1)
+            return streak, week_total
         except Exception as exc:
             print(f"⚠️  Streak query failed: {exc}")
-    return 0
+    return 0, 0
 
 
 def _get_total_commit_contributions():
@@ -874,8 +884,26 @@ def _is_prime(n):
     return True
 
 
+def _render_progress_bar(value, goal, width):
+    """Render a fixed-width unicode progress bar."""
+    if goal <= 0:
+        goal = 1
+    ratio = max(0.0, min(1.0, value / goal))
+    filled = int(round(ratio * width))
+    return f"{'█' * filled}{'░' * (width - filled)}"
+
+
+def _render_streak_paw_dots(streak):
+    """Render day-by-day paw dots with overflow suffix."""
+    if streak <= 0:
+        return "·"
+    dots = min(streak, _STREAK_PAW_MAX_DOTS)
+    suffix = f"+{streak - dots}" if streak > dots else ""
+    return f"{'•' * dots}{suffix}"
+
+
 def _resolve_main_cat_overlays(commit_count, today, activity, repos):
-    streak = _get_commit_streak_days()
+    streak, week_total = _get_commit_streak_and_week_total(today=today)
     hat = ""
     if streak >= 30:
         hat = "👑"
@@ -955,6 +983,12 @@ def _resolve_main_cat_overlays(commit_count, today, activity, repos):
 
     return {
         "streak": streak,
+        "streak_dots": _render_streak_paw_dots(streak),
+        "week_total": week_total,
+        "week_goal": _WEEKLY_COMMIT_GOAL,
+        "week_bar": _render_progress_bar(
+            week_total, _WEEKLY_COMMIT_GOAL, _WEEKLY_PROGRESS_WIDTH
+        ),
         "hat": hat,
         "eye_override": eye_override,
         "hand_item": hand_item,
@@ -1046,6 +1080,10 @@ def generate_cat_section(
     status_parts.append(
         f"🧩 连续提交 {overlays['streak']} 天 | 天气 {overlays['weather']}"
     )
+    status_parts.append(f"📅 日历爪印: {overlays['streak_dots']}")
+    status_parts.append(
+        f"📊 本周提交 [{overlays['week_bar']}] {overlays['week_total']}/{overlays['week_goal']}"
+    )
     status_block = "\n".join(status_parts)
 
     # Build an HTML comment block with machine-readable context that is
@@ -1065,6 +1103,9 @@ def generate_cat_section(
         f", issue authors (issue提交者)={issue_names}"
         f", hourly={json.dumps(activity.get('hourly_commits', {}), ensure_ascii=False, sort_keys=True)}"
         f", streak={overlays['streak']}, hat={overlays['hat'] or '无'}"
+        f", streakPaw={overlays['streak_dots']}"
+        f", week={overlays['week_total']}/{overlays['week_goal']}"
+        f", weekBar={overlays['week_bar']}"
         f", hand={overlays['hand_item'] or '空手'}, weather={overlays['weather']}"
         f", roleFlags=[{role_meta}]"
         f", animalFlags=[{animal_meta}]"
