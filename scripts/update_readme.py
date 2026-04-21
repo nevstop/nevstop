@@ -796,7 +796,7 @@ def _get_total_commit_contributions():
 query($login: String!) {
   user(login: $login) {
     createdAt
-    contributionsCollection {
+    contributionsCollection(from: "2008-01-01T00:00:00Z", to: "2100-01-01T00:00:00Z") {
       totalCommitContributions
       restrictedContributionsCount
     }
@@ -940,6 +940,8 @@ def generate_cat_section(
     """
     activity = activity or {}
     repos = repos or []
+    if today is None:
+        today = datetime.now(BJT).date()
     expression, msg = _resolve_cat_state(commit_count, today)
     overlays = _resolve_main_cat_overlays(commit_count, today, activity, repos)
     cats = [
