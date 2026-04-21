@@ -887,7 +887,8 @@ def _is_prime(n):
 def _render_progress_bar(value, goal, width):
     """Render a fixed-width unicode progress bar.
 
-    ``goal`` values <= 0 are coerced to 1 to keep rendering safe.
+    ``goal`` values <= 0 are coerced to 1, and negative ``value`` is clamped
+    to 0 via ratio clamping, to keep rendering safe.
     """
     if goal <= 0:
         goal = 1
@@ -901,9 +902,9 @@ def _render_streak_paw_dots(streak):
     """Render day-by-day paw dots with overflow suffix."""
     if streak <= 0:
         return "·"
-    dots = min(streak, _STREAK_PAW_MAX_DOTS)
-    suffix = f"+{streak - dots}" if streak > dots else ""
-    return f"{'•' * dots}{suffix}"
+    displayed_dots = min(streak, _STREAK_PAW_MAX_DOTS)
+    suffix = f"+{streak - displayed_dots}" if streak > displayed_dots else ""
+    return f"{'•' * displayed_dots}{suffix}"
 
 
 def _resolve_main_cat_overlays(commit_count, today, activity, repos):
