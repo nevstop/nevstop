@@ -135,12 +135,13 @@ _CAT_ACTIONS = {
 }
 
 _EXTRA_CAT_ROLES = [
-    ("review_cat", "Review猫", "🔍", "你在帮别人看代码"),
-    ("merge_cat", "Merge猫", "🚩", "你是合代码的主力"),
-    ("star_cat", "Star猫", "⭐", "你的项目被人喜欢"),
-    ("fork_cat", "Fork猫", "🌿", "代码被二次开发"),
-    ("discussion_cat", "讨论猫", "📢", "社区活跃分子"),
-    ("wiki_cat", "Wiki猫", "📘", "你在写文档"),
+    # (role_key, label, item, desc, face)
+    ("review_cat",   "Review猫", "🔍", "你在帮别人看代码", "( *.* )"),
+    ("merge_cat",    "Merge猫",  "🚩", "你是合代码的主力", "( ^.^ )"),
+    ("star_cat",     "Star猫",   "⭐", "你的项目被人喜欢", "( ★.★)"),
+    ("fork_cat",     "Fork猫",   "🌿", "代码被二次开发",   "(o.o )"),
+    ("discussion_cat","讨论猫",  "📢", "社区活跃分子",     "( >.< )"),
+    ("wiki_cat",     "Wiki猫",   "📘", "你在写文档",       "( -.- )"),
 ]
 
 _ANIMAL_ROLES = [
@@ -210,37 +211,38 @@ def _cat_ascii(
     return "\n".join([ear_line, eyes, paw_line])
 
 
-def _mini_ascii_cat(item=None, face="(o.o )"):
+def _mini_ascii_cat(item=None, face="(o.o )", hint=None):
     """Return a companion mini ASCII cat.
 
     *item* controls what the cat is holding:
     - ``None``  → nothing (tail ``~~``)
     - ``'pr'``  → holding a PR sign (``[P]``)
     - ``'bug'`` → holding a bug/issue card (``[!]``)
+
+    *face* customises the eyes / expression row.
+    *hint* is an optional short label appended as a 4th line (e.g. easter hints).
     """
     paw_map = {
         "pr":  "[P]",
         "bug": "[!]",
     }
     paw = paw_map.get(item) if item in paw_map else (item if item is not None else "~~")
-    return "\n".join(
-        [
-            " /\\_/\\",
-            face,
-            f" / {paw}",
-        ]
-    )
+    lines = [
+        " /\\_/\\",
+        face,
+        f" / {paw}",
+    ]
+    if hint:
+        lines.append(hint)
+    return "\n".join(lines)
 
 
 def _mini_ascii_animal(symbol, bubble):
-    """Return a compact non-cat companion block."""
-    return "\n".join(
-        [
-            "  .-.",
-            f" ({symbol})",
-            f' "{bubble}"',
-        ]
-    )
+    """Return a compact non-cat companion as a single display line.
+
+    Format: ``🐭："Fix that!"``  (shown at the bottom of the pre block)
+    """
+    return f'{symbol}："{bubble}"'
 
 
 # ── GitHub API Helper ───────────────────────────────────────────────────────
@@ -922,11 +924,6 @@ def _resolve_main_cat_overlays(commit_count, today, activity, repos):
     hourly = activity.get("hourly_commits", {})
     late_night = sum(v for h, v in hourly.items() if int(h) in _LATE_NIGHT_HOURS)
     day_sum = sum(v for h, v in hourly.items() if int(h) in _DAYTIME_HOURS)
-    eye_override = None
-    if late_night > 0:
-        eye_override = "( == )"
-    elif day_sum >= max(1, commit_count // 2):
-        eye_override = "( 😎 )"
 
     lang_priority = ("Python", "LabVIEW", "Go", "Rust")
     language_to_item = {
@@ -946,6 +943,9 @@ def _resolve_main_cat_overlays(commit_count, today, activity, repos):
         if language_counter.get(lang, 0) > 0:
             hand_item = language_to_item[lang]
             break
+    # Fallback: if no priority-language matched, use the most-committed language name
+    if not hand_item and language_counter:
+        hand_item = max(language_counter, key=language_counter.get)
 
     total = sum(hourly.values())
     avg_hour = total / 24 if total else 0
@@ -983,10 +983,15 @@ def _resolve_main_cat_overlays(commit_count, today, activity, repos):
     if total_commits >= 100 and total_commits % 100 == 0:
         easter["milestone_cat"] = True
 
+    # Eye accessories: explicit priority — alien > sleep-deprived > sunglasses
     if easter["alien_cat"]:
         eye_override = "( 👽 )"
-    if easter["midnight_cat"]:
-        eye_override = "( == )"
+    elif late_night > 0:
+        eye_override = "( 👀 )"
+    elif day_sum >= max(1, commit_count // 2):
+        eye_override = "( 😎 )"
+    else:
+        eye_override = None
 
     return {
         "streak": streak,
@@ -1043,9 +1048,9 @@ def generate_cat_section(
         "discussion_cat": activity.get("has_discussion", False),
         "wiki_cat": activity.get("has_wiki_edit", False),
     }
-    for key, _name, item, _desc in _EXTRA_CAT_ROLES:
+    for key, _name, item, _desc, face in _EXTRA_CAT_ROLES:
         if role_flags.get(key):
-            cats.append(_mini_ascii_cat(item=item))
+            cats.append(_mini_ascii_cat(item=item, face=face))
     animal_flags = {
         "mouse": activity.get("has_bugfix_commit", False),
         "penguin": activity.get("has_linux_related_commit", False),
@@ -1057,23 +1062,32 @@ def generate_cat_section(
             and activity.get("avg_gap_minutes") < 30
         ),
     }
+    # Non-cat animals are collected separately and shown as text lines below cats.
+    animal_lines = []
     for key, symbol, bubble in _ANIMAL_ROLES:
         if animal_flags.get(key):
-            cats.append(_mini_ascii_animal(symbol, bubble))
+            animal_lines.append(_mini_ascii_animal(symbol, bubble))
 
     easter = overlays["easter"]
+    total_commits = overlays["total_commits"]
     if easter["milestone_cat"]:
-        cats.append(_mini_ascii_cat(item="[★]", face="(★.★)"))
+        cats.append(_mini_ascii_cat(
+            item="[★]", face="(★.★)",
+            hint=f"({total_commits} commits)",
+        ))
     if easter["party_cat"]:
-        cats.append(_mini_ascii_cat(item="🎉", face="( ^.^ )"))
+        cats.append(_mini_ascii_cat(item="🎉", face="( ^.^ )", hint="(已 merge)"))
     if easter["ghost_cat"]:
-        cats.append(_mini_ascii_cat(item="👻", face="( ._. )"))
+        cats.append(_mini_ascii_cat(item="👻", face="( ._. )", hint="(罕见彩蛋)"))
 
-    # Keep the main cat and limit companion roles to avoid crowding.
+    # Keep the main cat and limit companion mini-cats to avoid crowding.
     cats = [cats[0]] + cats[1:_MAX_EXTRA_ROLE_CATS + 1]
 
     cat_ascii_art = _cats_side_by_side(cats)
-    cat_html = f'<pre style="{_PRE_STYLE}">\n{overlays["weather"]}\n{cat_ascii_art}\n</pre>'
+    pre_content = f"{overlays['weather']}\n{cat_ascii_art}"
+    if animal_lines:
+        pre_content += "\n" + "\n".join(animal_lines)
+    cat_html = f'<pre style="{_PRE_STYLE}">\n{pre_content}\n</pre>'
 
     # Build the status lines: commit status + optional closed-PR/Issue summary
     status_parts = [msg]
