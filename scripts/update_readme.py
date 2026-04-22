@@ -197,9 +197,11 @@ def _cat_ascii(
         action = random.Random(today.toordinal() + zlib.adler32(expression.encode())).choice(actions)
     else:
         action = actions[0]
-    ear_line = " /\\_/\\"
+    # Hat sits in the middle of the ears: /\🧢/\; outfit and aura trail after.
     if hat:
-        ear_line = f"{ear_line} {hat}"
+        ear_line = f" /\\{hat}/\\"
+    else:
+        ear_line = " /\\_/\\"
     if outfit:
         ear_line = f"{ear_line} {outfit}"
     if aura:
