@@ -1088,10 +1088,9 @@ def generate_cat_section(
     cats = [cats[0]] + cats[1:_MAX_EXTRA_ROLE_CATS + 1]
 
     cat_ascii_art = _cats_side_by_side(cats)
-    pre_content = f"{overlays['weather']}\n{cat_ascii_art}"
+    pre_lines = [overlays["weather"], cat_ascii_art]
     if animal_lines:
-        pre_content += "\n" + "\n".join(animal_lines)
-    cat_html = f'<pre style="{_PRE_STYLE}">\n{pre_content}\n</pre>'
+        pre_lines.extend(animal_lines)
 
     # Build the status lines: commit status + optional closed-PR/Issue summary
     status_parts = [msg]
@@ -1110,6 +1109,8 @@ def generate_cat_section(
         f"📊 本周提交 [{overlays['week_bar']}] {overlays['week_total']}/{overlays['week_goal']}"
     )
     status_block = "\n".join(status_parts)
+    pre_content = "\n".join(pre_lines + ["", status_block])
+    cat_html = f'<pre style="{_PRE_STYLE}">\n{pre_content}\n</pre>'
 
     # Build an HTML comment block with machine-readable context that is
     # invisible in rendered markdown but visible when reading the source.
@@ -1138,7 +1139,7 @@ def generate_cat_section(
         " -->"
     )
 
-    return f"{cat_html}\n\n{status_block}\n{comment}"
+    return f"{cat_html}\n{comment}"
 
 
 def generate_language_stats_section(language_totals):
