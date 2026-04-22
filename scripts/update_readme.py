@@ -550,8 +550,9 @@ def get_yesterday_repo_activity_flags(repos):
                     size = payload.get("size") or 0
                     if isinstance(size, int) and size > 0:
                         hourly_commits[event_time.hour] += size
-                        # Cap repeated timestamp expansion to keep memory bounded.
-                        commit_times.extend([event_time] * min(size, 20))
+                        # Record one timestamp per push event so gap calculations
+                        # are based on push timing rather than duplicated zero-length gaps.
+                        commit_times.append(event_time)
                     full_name_lower = (full_name or "").lower()
                     if any(k in full_name_lower for k in _LINUX_KEYWORDS):
                         has_linux_related_commit = True
@@ -745,9 +746,12 @@ def _get_commit_streak_and_week_total(today=None):
     token = os.environ.get("GITHUB_TOKEN")
     if token:
         try:
-            now = datetime.now(BJT)
-            from_str = (now - timedelta(days=45)).isoformat()
-            to_str = now.isoformat()
+            # Use `today` as the upper bound so results are deterministic when
+            # called with an explicit date (e.g., backfills or tests).
+            today_dt = datetime(today.year, today.month, today.day, 23, 59, 59, tzinfo=BJT)
+            # Fetch up to 366 days so the streak is correct for long streaks.
+            from_str = (today_dt - timedelta(days=366)).isoformat()
+            to_str = today_dt.isoformat()
             query = """
 query($login: String!, $from: DateTime!, $to: DateTime!) {
   user(login: $login) {
@@ -791,7 +795,7 @@ query($login: String!, $from: DateTime!, $to: DateTime!) {
                 for d in week.get("contributionDays", []):
                     day_counts[d.get("date")] = int(d.get("contributionCount", 0) or 0)
             streak = 0
-            cursor = (datetime.now(BJT) - timedelta(days=1)).date()
+            cursor = today - timedelta(days=1)
             while day_counts.get(cursor.isoformat(), 0) > 0:
                 streak += 1
                 cursor -= timedelta(days=1)
