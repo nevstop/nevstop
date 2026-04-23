@@ -452,6 +452,11 @@ def _get_target_orgs():
     return orgs
 
 
+def get_target_orgs():
+    """Public wrapper for :func:`_get_target_orgs` used by sibling scripts."""
+    return _get_target_orgs()
+
+
 def get_owned_repos():
     """Return all non-fork repos owned by the user or related orgs."""
     repos = _fetch_all_repos(
@@ -1121,8 +1126,9 @@ def generate_cat_section(
     role_meta = ", ".join([f"{k}={str(v).lower()}" for k, v in sorted(role_flags.items())])
     animal_meta = ", ".join([f"{k}={str(v).lower()}" for k, v in sorted(animal_flags.items())])
     easter_meta = ", ".join([f"{k}={str(v).lower()}" for k, v in sorted(easter.items())])
+    yesterday_str = (today - timedelta(days=1)).isoformat()
     comment = (
-        f"<!-- Yesterday Stats (昨日数据统计): commits={commit_count}"
+        f"<!-- Yesterday Stats (昨日数据统计): date={yesterday_str}, commits={commit_count}"
         f", closed PRs={activity.get('closed_pr_count', 0)}"
         f", closed issues={activity.get('closed_issue_count', 0)}"
         f", PR authors (PR提交者)={pr_names}"
@@ -1402,18 +1408,26 @@ def _parse_vipm_inline_totals(readme_content):
 def generate_vipm_inline_line(packages, old_installs=0, old_stars=0):
     """Build a single inline text line for the LabVIEW developer description.
 
+    A hidden HTML comment ``<!-- vipm-last-update: YYYY-MM-DD -->`` is appended
+    so that subsequent runs (including manual triggers) can detect same-day
+    re-runs and avoid showing misleading near-zero deltas.
+
     Example output:
       > 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): \
           16 packages, 34,469 installs, 69 stars，今日新增 installs: +123；Stars: +5
     """
+    today_str = datetime.now(BJT).strftime("%Y-%m-%d")
+    date_comment = f"<!-- vipm-last-update: {today_str} -->"
+
     if not packages:
-        return f"> 🔧 LabVIEW 开发者：[VIPM]({VIPM_URL})"
+        body = f"> 🔧 LabVIEW 开发者：[VIPM]({VIPM_URL})"
+        return f"{body}\n{date_comment}"
 
     total_pkgs = len(packages)
     total_installs = sum(p["installs"] for p in packages)
     total_stars = sum(p["stars"] for p in packages)
 
-    base = (
+    body = (
         f"> 🔧 LabVIEW 开发者：[VIPM]({VIPM_URL}): "
         f"{total_pkgs} packages, {total_installs:,} installs, {total_stars:,} stars"
     )
@@ -1424,9 +1438,21 @@ def generate_vipm_inline_line(packages, old_installs=0, old_stars=0):
         delta_s = total_stars - old_stars
         sign_i = "+" if delta_i >= 0 else ""
         sign_s = "+" if delta_s >= 0 else ""
-        base += f"，今日新增 installs: {sign_i}{delta_i:,}；Stars: {sign_s}{delta_s}"
+        body += f"，今日新增 installs: {sign_i}{delta_i:,}；Stars: {sign_s}{delta_s}"
 
-    return base
+    return f"{body}\n{date_comment}"
+
+
+def _parse_vipm_last_date(readme_content):
+    """Extract the date stored in the hidden vipm-last-update comment.
+
+    Returns a date string (``YYYY-MM-DD``) or ``None`` when not present.
+    """
+    match = re.search(
+        r"<!-- VIPM_INLINE_START -->[\s\S]*?<!-- vipm-last-update: (\d{4}-\d{2}-\d{2}) -->",
+        readme_content,
+    )
+    return match.group(1) if match else None
 
 
 # ── README Updater ──────────────────────────────────────────────────────────
@@ -1444,33 +1470,40 @@ def replace_section(content, tag, replacement):
 
 
 def main():
-    orgs = _get_target_orgs()
-    commit_count = get_yesterday_commits(orgs=orgs)
+    """Update the stats sections of README.md (LANG_STATS, VIPM_INLINE, UPDATE_TIME).
+
+    The CAT section is now maintained by ``scripts/update_cat.py``.
+
+    When this script is triggered manually on the same calendar day it already
+    ran, the VIPM delta ("今日新增") is suppressed to avoid showing a
+    misleading near-zero change.  The stored ``vipm-last-update`` date
+    (written as a hidden HTML comment by ``generate_vipm_inline_line``) is
+    used to detect such same-day re-runs.
+    """
     repos = get_owned_repos()
-    activity = get_yesterday_repo_activity_flags(repos)
     language_totals = get_language_totals(repos)
     vipm_packages = get_vipm_packages()
     now_bjt = datetime.now(BJT)
     today = now_bjt.date()
+    yesterday = (today - timedelta(days=1)).isoformat()
 
     with open(README_PATH, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # Update ASCII cat
-    content = replace_section(
-        content,
-        "CAT",
-        generate_cat_section(
-            commit_count,
-            activity=activity,
-            repos=repos,
-            today=today,
-        ),
-    )
+    # Detect same-day re-runs: if the stored VIPM date is newer than yesterday,
+    # the delta would reflect only intra-day change and would be misleading.
+    old_vipm_date = _parse_vipm_last_date(content)
+    is_vipm_rerun = old_vipm_date is not None and old_vipm_date >= today.isoformat()
+    if is_vipm_rerun:
+        print(f"ℹ️  VIPM already updated for today ({old_vipm_date}) — skipping delta")
 
     # Update inline VIPM stats (read old totals first for delta, then overwrite)
     old_installs, old_stars = _parse_vipm_inline_totals(content)
-    vipm_line = generate_vipm_inline_line(vipm_packages, old_installs, old_stars)
+    vipm_line = generate_vipm_inline_line(
+        vipm_packages,
+        0 if is_vipm_rerun else old_installs,
+        0 if is_vipm_rerun else old_stars,
+    )
     content = replace_section(content, "VIPM_INLINE", vipm_line)
 
     # Update Most Used Language stats
@@ -1484,7 +1517,7 @@ def main():
         f.write(content)
 
     print(
-        f"✅ README updated — {commit_count} commits yesterday, "
+        f"✅ README stats updated — "
         f"{len(repos)} owned repos scanned, "
         f"{len(vipm_packages)} VIPM packages"
     )
