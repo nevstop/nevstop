@@ -119,13 +119,11 @@ _PRE_STYLE = (
 )
 
 
-def _pick_cat(cats, commit_count, today):
+def _pick_cat(cats, commit_count, today, expression):
     """Pick a daily cat phrase with deterministic day-to-day variety."""
-    seed = today.toordinal() + (commit_count * _CAT_VARIANT_SEED_MULTIPLIER)
-    prev_seed = (
-        (today - timedelta(days=1)).toordinal()
-        + (commit_count * _CAT_VARIANT_SEED_MULTIPLIER)
-    )
+    expression_seed = zlib.adler32(expression.encode())
+    seed = today.toordinal() + expression_seed
+    prev_seed = (today - timedelta(days=1)).toordinal() + expression_seed
     msg_tpl = _pick_daily_variant(cats, seed, prev_seed=prev_seed)
     msg = msg_tpl.format(n=commit_count)
     return msg
@@ -183,7 +181,6 @@ _SPECIAL_DAY_OUTFITS = {
 
 _GHOST_CAT_SEED_OFFSET = 404
 _GHOST_CAT_PROBABILITY = 0.01
-_CAT_VARIANT_SEED_MULTIPLIER = 131
 _MAX_EXTRA_ROLE_CATS = 5
 _BUGFIX_KEYWORDS = ("fix", "bug", "修复")
 _LINUX_KEYWORDS = ("docker", "linux", "k8s", "container")
@@ -775,7 +772,7 @@ def _resolve_cat_state(commit_count, today):
         cats = _CATS_ULTRA
         expression = "intense"
 
-    msg = _pick_cat(cats, commit_count, today)
+    msg = _pick_cat(cats, commit_count, today, expression)
     return expression, msg
 
 
@@ -1013,14 +1010,14 @@ def _resolve_main_cat_overlays(commit_count, today, activity, repos):
     avg_hour = total / 24 if total else 0
     max_hour = activity.get("burst_hourly", 0)
     if total == 0:
-        weather = "☁️"
+        rhythm = "☁️"
     elif max_hour >= 10:
-        weather = "⛈️"
+        rhythm = "⛈️"
     # 2.5 is a "burst factor": max hour within 2.5x of average => stable output.
     elif avg_hour and (max_hour / avg_hour) <= 2.5:
-        weather = "☀️"
+        rhythm = "☀️"
     else:
-        weather = "☀️"
+        rhythm = "☀️"
 
     outfit = _SPECIAL_DAY_OUTFITS.get(today.strftime("%m-%d"))
     total_commits = _get_total_commit_contributions()
@@ -1066,7 +1063,7 @@ def _resolve_main_cat_overlays(commit_count, today, activity, repos):
         "hat": hat,
         "eye_override": eye_override,
         "hand_item": hand_item,
-        "weather": weather,
+        "rhythm": rhythm,
         "outfit": outfit,
         "easter": easter,
         "total_commits": total_commits,
@@ -1160,7 +1157,7 @@ def generate_cat_section(
     if close_parts:
         status_parts.append(f"📌 关闭了 {'、'.join(close_parts)}")
     status_parts.append(
-        f"🧩 连续提交 {overlays['streak']} 天 | 活跃节奏 {overlays['weather']}"
+        f"🧩 连续提交 {overlays['streak']} 天 | 活跃节奏 {overlays['rhythm']}"
     )
     status_parts.append(f"📅 日历爪印: {overlays['streak_dots']}")
     status_parts.append(
@@ -1191,7 +1188,7 @@ def generate_cat_section(
         f", streakPaw={overlays['streak_dots']}"
         f", week={overlays['week_total']}/{overlays['week_goal']}"
         f", weekBar={overlays['week_bar']}"
-        f", hand={overlays['hand_item'] or '空手'}, rhythm={overlays['weather']}"
+        f", hand={overlays['hand_item'] or '空手'}, rhythm={overlays['rhythm']}"
         f", roleFlags=[{role_meta}]"
         f", animalFlags=[{animal_meta}]"
         f", easter=[{easter_meta}]"
