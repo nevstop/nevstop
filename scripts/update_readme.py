@@ -120,11 +120,24 @@ _PRE_STYLE = (
 
 
 def _pick_cat(cats, commit_count, today):
-    """Pick a cat deterministically for the given day."""
-    rng = random.Random(today.toordinal())
-    msg_tpl = rng.choice(cats)
+    """Pick a daily cat phrase with deterministic day-to-day variety."""
+    seed = today.toordinal() + (commit_count * 131)
+    msg_tpl = _pick_daily_variant(cats, seed)
     msg = msg_tpl.format(n=commit_count)
     return msg
+
+
+def _pick_daily_variant(options, seed):
+    """Pick a deterministic daily variant and avoid same-as-yesterday repeats."""
+    if not options:
+        raise ValueError("options must not be empty")
+    rng = random.Random(seed)
+    idx = rng.randrange(len(options))
+    if len(options) > 1:
+        prev_idx = random.Random(seed - 1).randrange(len(options))
+        if idx == prev_idx:
+            idx = (idx + 1) % len(options)
+    return options[idx]
 
 
 _CAT_ACTIONS = {
@@ -165,9 +178,30 @@ _BUGFIX_KEYWORDS = ("fix", "bug", "修复")
 _LINUX_KEYWORDS = ("docker", "linux", "k8s", "container")
 _LATE_NIGHT_HOURS = tuple(range(2, 6))
 _DAYTIME_HOURS = tuple(range(8, 19))
-_WEEKLY_COMMIT_GOAL = 20
+_DEFAULT_WEEKLY_COMMIT_GOAL = 100
 _WEEKLY_PROGRESS_WIDTH = 12
 _STREAK_PAW_MAX_DOTS = 14
+
+
+def _get_positive_int_env(name, default):
+    """Read a positive integer from env; fallback to *default* on invalid input."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        value = int(str(raw).strip())
+    except (TypeError, ValueError):
+        print(f"⚠️  Invalid {name}={raw!r}; fallback to {default}")
+        return default
+    if value <= 0:
+        print(f"⚠️  Invalid {name}={raw!r}; fallback to {default}")
+        return default
+    return value
+
+
+_WEEKLY_COMMIT_GOAL = _get_positive_int_env(
+    "WEEKLY_COMMIT_GOAL", _DEFAULT_WEEKLY_COMMIT_GOAL
+)
 
 
 def _cat_ascii(
@@ -193,11 +227,10 @@ def _cat_ascii(
     eyes = eye_override or eye_map.get(expression, "( ^.^ )")
     actions = _CAT_ACTIONS.get(expression, [" / >~"])
     if today is not None:
-        # zlib.adler32 gives a stable, process-independent integer from the
-        # expression name so the seed is reproducible across Python runs.
-        action = random.Random(today.toordinal() + zlib.adler32(expression.encode())).choice(actions)
+        seed = today.toordinal() + zlib.adler32(expression.encode())
+        action = _pick_daily_variant(actions, seed)
     else:
-        action = actions[0]
+        action = random.choice(actions)
     # Hat sits in the middle of the ears: /\🧢/\; outfit and aura trail after.
     if hat:
         ear_line = f" /\\{hat}/\\"
@@ -1093,7 +1126,7 @@ def generate_cat_section(
     cats = [cats[0]] + cats[1:_MAX_EXTRA_ROLE_CATS + 1]
 
     cat_ascii_art = _cats_side_by_side(cats)
-    pre_lines = [overlays["weather"], cat_ascii_art]
+    pre_lines = [cat_ascii_art]
     if animal_lines:
         pre_lines.extend(animal_lines)
 
@@ -1107,7 +1140,7 @@ def generate_cat_section(
     if close_parts:
         status_parts.append(f"📌 关闭了 {'、'.join(close_parts)}")
     status_parts.append(
-        f"🧩 连续提交 {overlays['streak']} 天 | 天气 {overlays['weather']}"
+        f"🧩 连续提交 {overlays['streak']} 天 | 活跃节奏 {overlays['weather']}"
     )
     status_parts.append(f"📅 日历爪印: {overlays['streak_dots']}")
     status_parts.append(
@@ -1138,7 +1171,7 @@ def generate_cat_section(
         f", streakPaw={overlays['streak_dots']}"
         f", week={overlays['week_total']}/{overlays['week_goal']}"
         f", weekBar={overlays['week_bar']}"
-        f", hand={overlays['hand_item'] or '空手'}, weather={overlays['weather']}"
+        f", hand={overlays['hand_item'] or '空手'}, rhythm={overlays['weather']}"
         f", roleFlags=[{role_meta}]"
         f", animalFlags=[{animal_meta}]"
         f", easter=[{easter_meta}]"

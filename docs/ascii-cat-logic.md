@@ -10,6 +10,8 @@
 - `21~40`：intense（高压）
 - `41+`：intense（超载）
 
+同一档位内的文案与动作会按日期变化，并避免连续两天落在同一变体，保证每天小猫有变化。
+
 并叠加以下动态效果：
 
 - **帽子（streak）**
@@ -25,13 +27,13 @@
   - LabVIEW: `🔌`
   - Go: `🐹`
   - Rust: `🦀`
-- **背景天气（小时波动）**
+- **活跃节奏（小时波动）**
   - 0 commit：`☁️`
   - 单小时 >= 10：`⛈️`
   - 其他：`☀️`
 - **长期趋势**
   - 日历爪印：连续提交天数映射为 `•` 点阵（超长显示 `+N`）
-  - 本周提交进度：固定宽度进度条 + `本周提交/目标值`
+  - 本周提交进度：固定宽度进度条 + `本周提交/目标值`（默认目标 `100`，可通过环境变量 `WEEKLY_COMMIT_GOAL` 配置）
 
 ## 2. 多小猫角色（最多额外显示 5 只）
 
@@ -77,7 +79,7 @@
 - commit / close PR / close issue
 - PR/Issue 作者
 - hourly 分布
-- streak / hat / hand / weather
+- streak / hat / hand / rhythm
 - roleFlags / animalFlags / easter
 
 这些信息只存在于 Markdown 源码，不在页面渲染。
