@@ -1408,20 +1408,19 @@ def _parse_vipm_inline_totals(readme_content):
 def generate_vipm_inline_line(packages, old_installs=0, old_stars=0):
     """Build a single inline text line for the LabVIEW developer description.
 
-    A hidden HTML comment ``<!-- vipm-last-update: YYYY-MM-DD -->`` is appended
-    so that subsequent runs (including manual triggers) can detect same-day
-    re-runs and avoid showing misleading near-zero deltas.
+    When *packages* is non-empty (fetch succeeded), a hidden HTML comment
+    ``<!-- vipm-last-update: YYYY-MM-DD -->`` is appended so that subsequent
+    runs (including manual triggers) can detect same-day re-runs and avoid
+    showing misleading near-zero deltas.  The date comment is intentionally
+    omitted when *packages* is empty so that a later same-day successful run
+    is not incorrectly treated as a re-run.
 
     Example output:
       > 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): \
           16 packages, 34,469 installs, 69 stars，今日新增 installs: +123；Stars: +5
     """
-    today_str = datetime.now(BJT).strftime("%Y-%m-%d")
-    date_comment = f"<!-- vipm-last-update: {today_str} -->"
-
     if not packages:
-        body = f"> 🔧 LabVIEW 开发者：[VIPM]({VIPM_URL})"
-        return f"{body}\n{date_comment}"
+        return f"> 🔧 LabVIEW 开发者：[VIPM]({VIPM_URL})"
 
     total_pkgs = len(packages)
     total_installs = sum(p["installs"] for p in packages)
@@ -1440,7 +1439,8 @@ def generate_vipm_inline_line(packages, old_installs=0, old_stars=0):
         sign_s = "+" if delta_s >= 0 else ""
         body += f"，今日新增 installs: {sign_i}{delta_i:,}；Stars: {sign_s}{delta_s}"
 
-    return f"{body}\n{date_comment}"
+    today_str = datetime.now(BJT).strftime("%Y-%m-%d")
+    return f"{body}\n<!-- vipm-last-update: {today_str} -->"
 
 
 def _parse_vipm_last_date(readme_content):
@@ -1477,21 +1477,20 @@ def main():
     When this script is triggered manually on the same calendar day it already
     ran, the VIPM delta ("今日新增") is suppressed to avoid showing a
     misleading near-zero change.  The stored ``vipm-last-update`` date
-    (written as a hidden HTML comment by ``generate_vipm_inline_line``) is
-    used to detect such same-day re-runs.
+    (written as a hidden HTML comment by ``generate_vipm_inline_line`` only on
+    successful VIPM fetches) is used to detect such same-day re-runs.
     """
     repos = get_owned_repos()
     language_totals = get_language_totals(repos)
     vipm_packages = get_vipm_packages()
     now_bjt = datetime.now(BJT)
     today = now_bjt.date()
-    yesterday = (today - timedelta(days=1)).isoformat()
 
     with open(README_PATH, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # Detect same-day re-runs: if the stored VIPM date is newer than yesterday,
-    # the delta would reflect only intra-day change and would be misleading.
+    # Detect same-day re-runs: if the stored VIPM date is today or later, the
+    # delta would reflect only an intra-day change and would be misleading.
     old_vipm_date = _parse_vipm_last_date(content)
     is_vipm_rerun = old_vipm_date is not None and old_vipm_date >= today.isoformat()
     if is_vipm_rerun:
