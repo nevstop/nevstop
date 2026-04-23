@@ -121,22 +121,32 @@ _PRE_STYLE = (
 
 def _pick_cat(cats, commit_count, today):
     """Pick a daily cat phrase with deterministic day-to-day variety."""
-    seed = today.toordinal() + (commit_count * 131)
-    msg_tpl = _pick_daily_variant(cats, seed)
+    seed = today.toordinal() + (commit_count * _CAT_VARIANT_SEED_MULTIPLIER)
+    prev_seed = (
+        (today - timedelta(days=1)).toordinal()
+        + (commit_count * _CAT_VARIANT_SEED_MULTIPLIER)
+    )
+    msg_tpl = _pick_daily_variant(cats, seed, prev_seed=prev_seed)
     msg = msg_tpl.format(n=commit_count)
     return msg
 
 
-def _pick_daily_variant(options, seed):
-    """Pick a deterministic daily variant and avoid same-as-yesterday repeats."""
+def _pick_daily_variant(options, seed, prev_seed=None):
+    """Pick a deterministic daily variant and avoid adjacent-day repeats."""
     if not options:
         raise ValueError("options must not be empty")
     rng = random.Random(seed)
     idx = rng.randrange(len(options))
     if len(options) > 1:
-        prev_idx = random.Random(seed - 1).randrange(len(options))
+        if prev_seed is None:
+            prev_seed = seed - 1
+        prev_idx = random.Random(prev_seed).randrange(len(options))
         if idx == prev_idx:
-            idx = (idx + 1) % len(options)
+            if len(options) == 2:
+                idx = 1 - idx
+            else:
+                offset = 1 + rng.randrange(len(options) - 1)
+                idx = (idx + offset) % len(options)
     return options[idx]
 
 
@@ -173,6 +183,7 @@ _SPECIAL_DAY_OUTFITS = {
 
 _GHOST_CAT_SEED_OFFSET = 404
 _GHOST_CAT_PROBABILITY = 0.01
+_CAT_VARIANT_SEED_MULTIPLIER = 131
 _MAX_EXTRA_ROLE_CATS = 5
 _BUGFIX_KEYWORDS = ("fix", "bug", "修复")
 _LINUX_KEYWORDS = ("docker", "linux", "k8s", "container")
@@ -185,16 +196,20 @@ _STREAK_PAW_MAX_DOTS = 14
 
 def _get_positive_int_env(name, default):
     """Read a positive integer from env; fallback to *default* on invalid input."""
+    fallback_msg = (
+        f"⚠️  Invalid {name}={{raw!r}}; "
+        f"must be a positive integer, falling back to {default}"
+    )
     raw = os.environ.get(name)
     if raw is None:
         return default
     try:
-        value = int(str(raw).strip())
-    except (TypeError, ValueError):
-        print(f"⚠️  Invalid {name}={raw!r}; fallback to {default}")
+        value = int(raw.strip())
+    except ValueError:
+        print(fallback_msg.format(raw=raw))
         return default
     if value <= 0:
-        print(f"⚠️  Invalid {name}={raw!r}; fallback to {default}")
+        print(fallback_msg.format(raw=raw))
         return default
     return value
 
@@ -227,10 +242,15 @@ def _cat_ascii(
     eyes = eye_override or eye_map.get(expression, "( ^.^ )")
     actions = _CAT_ACTIONS.get(expression, [" / >~"])
     if today is not None:
-        seed = today.toordinal() + zlib.adler32(expression.encode())
-        action = _pick_daily_variant(actions, seed)
+        expression_seed = zlib.adler32(expression.encode())
+        seed = today.toordinal() + expression_seed
+        prev_seed = (
+            (today - timedelta(days=1)).toordinal()
+            + expression_seed
+        )
+        action = _pick_daily_variant(actions, seed, prev_seed=prev_seed)
     else:
-        action = random.choice(actions)
+        action = actions[0]
     # Hat sits in the middle of the ears: /\🧢/\; outfit and aura trail after.
     if hat:
         ear_line = f" /\\{hat}/\\"
