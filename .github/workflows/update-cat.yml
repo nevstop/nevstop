@@ -1,8 +1,8 @@
-name: Update README Dashboard
+name: Update README Cat
 
 on:
   schedule:
-    - cron: '10 17 * * *'  # 每天北京时间凌晨 1:10 (UTC 17:10)，比小猫更新晚 10 分钟
+    - cron: '0 17 * * *'   # 每天北京时间凌晨 1:00 (UTC 17:00)
   workflow_dispatch:        # 支持手动触发
 
 concurrency:
@@ -21,14 +21,14 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Update README stats
+      - name: Update CAT section
         env:
           GITHUB_TOKEN: ${{ secrets.SYNC_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
-        run: python scripts/update_readme.py
+        run: python scripts/update_cat.py
 
       - name: Commit and push
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add README.md
-          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 Daily stats update" && git pull --rebase && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🐱 Daily cat status update" && git pull --rebase && git push)
