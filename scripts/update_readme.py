@@ -947,6 +947,18 @@ def _is_prime(n):
     return True
 
 
+_DIGIT_EMOJI = {
+    "0": "0️⃣", "1": "1️⃣", "2": "2️⃣", "3": "3️⃣", "4": "4️⃣",
+    "5": "5️⃣", "6": "6️⃣", "7": "7️⃣", "8": "8️⃣", "9": "9️⃣",
+    "-": "➖",
+}
+
+
+def _date_to_emoji(d):
+    """Convert a date object to an emoji-digit string, e.g. 2️⃣0️⃣2️⃣6️⃣➖0️⃣4️⃣➖2️⃣4️⃣."""
+    return "".join(_DIGIT_EMOJI.get(c, c) for c in d.isoformat())
+
+
 def _render_progress_bar(value, goal, width):
     """Render a fixed-width unicode progress bar.
 
@@ -1147,6 +1159,9 @@ def generate_cat_section(
     if animal_lines:
         pre_lines.extend(animal_lines)
 
+    # Decorative top line: date as emoji digits + rhythm emoji icon only
+    top_deco = f" {_date_to_emoji(today)}   {overlays['rhythm']}"
+
     # Build the status lines: commit status + optional closed-PR/Issue summary
     status_parts = [msg]
     close_parts = []
@@ -1164,7 +1179,7 @@ def generate_cat_section(
         f"📊 本周提交 [{overlays['week_bar']}] {overlays['week_total']}/{overlays['week_goal']}"
     )
     status_block = "\n".join(status_parts)
-    pre_content = "\n".join(pre_lines + ["", status_block])
+    pre_content = "\n".join([top_deco, ""] + pre_lines + ["", status_block])
     cat_html = f'<pre style="{_PRE_STYLE}">\n{pre_content}\n</pre>'
 
     # Build an HTML comment block with machine-readable context that is
