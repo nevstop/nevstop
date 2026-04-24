@@ -1147,6 +1147,9 @@ def generate_cat_section(
     if animal_lines:
         pre_lines.extend(animal_lines)
 
+    # Decorative top line: date (emoji) + active rhythm, kept separate from dashboard UPDATE_TIME
+    top_deco = f"🗓️  {today.isoformat()}   ·   活跃节奏  {overlays['rhythm']}"
+
     # Build the status lines: commit status + optional closed-PR/Issue summary
     status_parts = [msg]
     close_parts = []
@@ -1156,15 +1159,13 @@ def generate_cat_section(
         close_parts.append(f"{activity.get('closed_issue_count', 0)} 个 Issue")
     if close_parts:
         status_parts.append(f"📌 关闭了 {'、'.join(close_parts)}")
-    status_parts.append(
-        f"🧩 连续提交 {overlays['streak']} 天 | 活跃节奏 {overlays['rhythm']}"
-    )
+    status_parts.append(f"🧩 连续提交 {overlays['streak']} 天")
     status_parts.append(f"📅 日历爪印: {overlays['streak_dots']}")
     status_parts.append(
         f"📊 本周提交 [{overlays['week_bar']}] {overlays['week_total']}/{overlays['week_goal']}"
     )
     status_block = "\n".join(status_parts)
-    pre_content = "\n".join(pre_lines + ["", status_block])
+    pre_content = "\n".join([top_deco, ""] + pre_lines + ["", status_block])
     cat_html = f'<pre style="{_PRE_STYLE}">\n{pre_content}\n</pre>'
 
     # Build an HTML comment block with machine-readable context that is
