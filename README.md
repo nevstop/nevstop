@@ -19,7 +19,7 @@
 ### 👋 Hi, I'm **NEVSTOP**
 
 <!-- VIPM_INLINE_START -->
-> 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): 16 packages, 34,980 installs, 69 stars，今日新增 installs: +73；Stars: +0
+> 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): 16 packages, 34,980 installs, 69 stars，今日新增 installs: +73
 <!-- vipm-last-update: 2026-04-24 -->
 <!-- VIPM_INLINE_END -->
 

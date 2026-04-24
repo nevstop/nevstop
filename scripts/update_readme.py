@@ -1480,9 +1480,13 @@ def generate_vipm_inline_line(packages, old_installs=0, old_stars=0):
     omitted when *packages* is empty so that a later same-day successful run
     is not incorrectly treated as a re-run.
 
-    Example output:
+    Example output (both non-zero):
       > 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): \
           16 packages, 34,469 installs, 69 stars，今日新增 installs: +123；Stars: +5
+
+    When a delta is zero that field is omitted entirely, e.g.:
+      > 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): \
+          16 packages, 34,469 installs, 69 stars，今日新增 installs: +73
     """
     if not packages:
         return f"> 🔧 LabVIEW 开发者：[VIPM]({VIPM_URL})"
@@ -1496,13 +1500,19 @@ def generate_vipm_inline_line(packages, old_installs=0, old_stars=0):
         f"{total_pkgs} packages, {total_installs:,} installs, {total_stars:,} stars"
     )
 
-    # Append delta only when we have a previous reading
+    # Append delta only when we have a previous reading; skip fields with zero delta
     if old_installs > 0 or old_stars > 0:
-        delta_i = total_installs - old_installs
-        delta_s = total_stars - old_stars
-        sign_i = "+" if delta_i >= 0 else ""
-        sign_s = "+" if delta_s >= 0 else ""
-        body += f"，今日新增 installs: {sign_i}{delta_i:,}；Stars: {sign_s}{delta_s}"
+        delta_installs = total_installs - old_installs
+        delta_stars = total_stars - old_stars
+        parts = []
+        if delta_installs != 0:
+            sign_i = "+" if delta_installs >= 0 else ""
+            parts.append(f"installs: {sign_i}{delta_installs:,}")
+        if delta_stars != 0:
+            sign_s = "+" if delta_stars >= 0 else ""
+            parts.append(f"Stars: {sign_s}{delta_stars}")
+        if parts:
+            body += "，今日新增 " + "；".join(parts)
 
     today_str = datetime.now(BJT).strftime("%Y-%m-%d")
     return f"{body}\n<!-- vipm-last-update: {today_str} -->"
