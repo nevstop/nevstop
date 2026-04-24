@@ -947,6 +947,18 @@ def _is_prime(n):
     return True
 
 
+_DIGIT_EMOJI = {
+    "0": "0️⃣", "1": "1️⃣", "2": "2️⃣", "3": "3️⃣", "4": "4️⃣",
+    "5": "5️⃣", "6": "6️⃣", "7": "7️⃣", "8": "8️⃣", "9": "9️⃣",
+    "-": "➖",
+}
+
+
+def _date_to_emoji(d):
+    """Convert a date object to an emoji-digit string, e.g. 2️⃣0️⃣2️⃣6️⃣➖0️⃣4️⃣➖2️⃣4️⃣."""
+    return "".join(_DIGIT_EMOJI.get(c, c) for c in d.isoformat())
+
+
 def _render_progress_bar(value, goal, width):
     """Render a fixed-width unicode progress bar.
 
@@ -1147,8 +1159,8 @@ def generate_cat_section(
     if animal_lines:
         pre_lines.extend(animal_lines)
 
-    # Decorative top line: date (emoji) + active rhythm, kept separate from dashboard UPDATE_TIME
-    top_deco = f"🗓️  {today.isoformat()}   ·   活跃节奏  {overlays['rhythm']}"
+    # Decorative top line: date as emoji digits + rhythm emoji icon only
+    top_deco = f" {_date_to_emoji(today)}   {overlays['rhythm']}"
 
     # Build the status lines: commit status + optional closed-PR/Issue summary
     status_parts = [msg]
@@ -1159,7 +1171,9 @@ def generate_cat_section(
         close_parts.append(f"{activity.get('closed_issue_count', 0)} 个 Issue")
     if close_parts:
         status_parts.append(f"📌 关闭了 {'、'.join(close_parts)}")
-    status_parts.append(f"🧩 连续提交 {overlays['streak']} 天")
+    status_parts.append(
+        f"🧩 连续提交 {overlays['streak']} 天 | 活跃节奏 {overlays['rhythm']}"
+    )
     status_parts.append(f"📅 日历爪印: {overlays['streak_dots']}")
     status_parts.append(
         f"📊 本周提交 [{overlays['week_bar']}] {overlays['week_total']}/{overlays['week_goal']}"
