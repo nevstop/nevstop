@@ -1476,8 +1476,14 @@ def generate_vipm_inline_line(
     old_stars=0,
     month_start_installs=None,
     month_start_stars=None,
+    now_bjt=None,
 ):
     """Build a single inline text line for the LabVIEW developer description.
+
+    *now_bjt* is the Beijing-time ``datetime`` computed by the caller (``main``).
+    Passing it in avoids a second ``datetime.now()`` call that could disagree
+    across a midnight boundary.  When ``None`` the function falls back to
+    ``datetime.now(BJT)`` (e.g. for unit tests that do not supply a time).
 
     When *packages* is non-empty (fetch succeeded), two hidden HTML comments
     are appended:
@@ -1490,12 +1496,14 @@ def generate_vipm_inline_line(
       baseline (monthly delta is not shown yet).  On subsequent runs within the
       same month the stored baseline is preserved.
 
-    Both comments are intentionally omitted when *packages* is empty.
+    Both comments are intentionally omitted when *packages* is empty, and
+    callers should skip the VIPM_INLINE section replacement on failure to
+    preserve any previously written baseline.
 
     Example output (daily + monthly non-zero):
       > 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): \\
           16 packages, 34,469 installs, 69 stars，今日新增 installs: +123；Stars: +5，\\
-          本月新增 installs: +1,000, stars: +2
+          本月新增 installs: +1,000；Stars: +2
 
     When a delta is zero that field is omitted entirely.
     """
@@ -1522,14 +1530,14 @@ def generate_vipm_inline_line(
             parts.append(f"installs: {sign_i}{delta_installs:,}")
         if delta_stars != 0:
             sign_s = "+" if delta_stars >= 0 else ""
-            parts.append(f"Stars: {sign_s}{delta_stars}")
+            parts.append(f"Stars: {sign_s}{delta_stars:,}")
         if parts:
             body += "，今日新增 " + "；".join(parts)
 
     # ── Monthly delta ────────────────────────────────────────────────────────
-    now_bjt = datetime.now(BJT)
-    today_str = now_bjt.strftime("%Y-%m-%d")
-    current_month_str = now_bjt.strftime("%Y-%m")
+    _now = now_bjt if now_bjt is not None else datetime.now(BJT)
+    today_str = _now.strftime("%Y-%m-%d")
+    current_month_str = _now.strftime("%Y-%m")
 
     if month_start_installs is not None:
         # Existing baseline for this month — compute and show delta
@@ -1541,7 +1549,7 @@ def generate_vipm_inline_line(
             month_parts.append(f"installs: {sign_mi}{month_delta_installs:,}")
         if month_delta_stars != 0:
             sign_ms = "+" if month_delta_stars > 0 else ""
-            month_parts.append(f"stars: {sign_ms}{month_delta_stars:,}")
+            month_parts.append(f"Stars: {sign_ms}{month_delta_stars:,}")
         if month_parts:
             body += "，本月新增 " + "；".join(month_parts)
         # Preserve the existing monthly baseline in the comment
@@ -1575,10 +1583,15 @@ def _parse_vipm_last_date(readme_content):
 def _parse_vipm_month_start(readme_content):
     """Extract the monthly baseline stored in the hidden vipm-month-start comment.
 
+    The search is anchored to the ``VIPM_INLINE`` block (same as
+    ``_parse_vipm_last_date``) to avoid accidentally matching a similarly
+    formatted comment elsewhere in the file.
+
     Returns ``(month_str, installs, stars)`` where *month_str* is ``'YYYY-MM'``,
     or ``(None, 0, 0)`` when not present.
     """
     match = re.search(
+        r"<!-- VIPM_INLINE_START -->[\s\S]*?"
         r"<!-- vipm-month-start: (\d{4}-\d{2}), installs=(\d+), stars=(\d+) -->",
         readme_content,
     )
@@ -1641,16 +1654,22 @@ def main():
         month_start_i = None
         month_start_s = None
 
-    # Update inline VIPM stats (read old totals first for delta, then overwrite)
-    old_installs, old_stars = _parse_vipm_inline_totals(content)
-    vipm_line = generate_vipm_inline_line(
-        vipm_packages,
-        0 if is_vipm_rerun else old_installs,
-        0 if is_vipm_rerun else old_stars,
-        month_start_installs=month_start_i,
-        month_start_stars=month_start_s,
-    )
-    content = replace_section(content, "VIPM_INLINE", vipm_line)
+    # Update inline VIPM stats (read old totals first for delta, then overwrite).
+    # If the VIPM fetch failed (empty packages list), skip the section replacement
+    # entirely to preserve the existing content and the vipm-month-start baseline.
+    if vipm_packages:
+        old_installs, old_stars = _parse_vipm_inline_totals(content)
+        vipm_line = generate_vipm_inline_line(
+            vipm_packages,
+            0 if is_vipm_rerun else old_installs,
+            0 if is_vipm_rerun else old_stars,
+            month_start_installs=month_start_i,
+            month_start_stars=month_start_s,
+            now_bjt=now_bjt,
+        )
+        content = replace_section(content, "VIPM_INLINE", vipm_line)
+    else:
+        print("⚠️  VIPM fetch failed — skipping VIPM_INLINE replacement to preserve baseline")
 
     # Update Most Used Language stats
     content = replace_section(content, "LANG_STATS", generate_language_stats_section(language_totals))
