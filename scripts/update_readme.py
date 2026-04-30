@@ -1502,10 +1502,11 @@ def generate_vipm_inline_line(
 
     Example output (daily + monthly non-zero):
       > 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): \\
-          16 packages, 34,469 installs, 69 stars，今日新增 installs: +123；Stars: +5，\\
-          本月新增 installs: +1,000；Stars: +2
+          16 packages, 34,469 installs, 69 stars
+      > 📈 今日新增 installs: +123；Stars: +5；本月新增 installs: +1,000；Stars: +2
 
-    When a delta is zero that field is omitted entirely.
+    When all deltas are zero the second line is omitted entirely.
+    When a single delta field is zero that field is omitted from the second line.
     """
     if not packages:
         return f"> 🔧 LabVIEW 开发者：[VIPM]({VIPM_URL})"
@@ -1520,19 +1521,17 @@ def generate_vipm_inline_line(
     )
 
     # ── Daily delta ─────────────────────────────────────────────────────────
-    # Append delta only when we have a previous reading; skip fields with zero delta
+    # Collect delta parts; skip fields with zero delta
+    delta_parts = []
     if old_installs > 0 or old_stars > 0:
         delta_installs = total_installs - old_installs
         delta_stars = total_stars - old_stars
-        parts = []
         if delta_installs != 0:
             sign_i = "+" if delta_installs >= 0 else ""
-            parts.append(f"installs: {sign_i}{delta_installs:,}")
+            delta_parts.append(f"今日新增 installs: {sign_i}{delta_installs:,}")
         if delta_stars != 0:
             sign_s = "+" if delta_stars >= 0 else ""
-            parts.append(f"Stars: {sign_s}{delta_stars:,}")
-        if parts:
-            body += "，今日新增 " + "；".join(parts)
+            delta_parts.append(f"Stars: {sign_s}{delta_stars:,}")
 
     # ── Monthly delta ────────────────────────────────────────────────────────
     _now = now_bjt if now_bjt is not None else datetime.now(BJT)
@@ -1543,15 +1542,12 @@ def generate_vipm_inline_line(
         # Existing baseline for this month — compute and show delta
         month_delta_installs = total_installs - month_start_installs
         month_delta_stars = total_stars - (month_start_stars or 0)
-        month_parts = []
         if month_delta_installs != 0:
             sign_mi = "+" if month_delta_installs > 0 else ""
-            month_parts.append(f"installs: {sign_mi}{month_delta_installs:,}")
+            delta_parts.append(f"本月新增 installs: {sign_mi}{month_delta_installs:,}")
         if month_delta_stars != 0:
             sign_ms = "+" if month_delta_stars > 0 else ""
-            month_parts.append(f"Stars: {sign_ms}{month_delta_stars:,}")
-        if month_parts:
-            body += "，本月新增 " + "；".join(month_parts)
+            delta_parts.append(f"Stars: {sign_ms}{month_delta_stars:,}")
         # Preserve the existing monthly baseline in the comment
         month_comment = (
             f"<!-- vipm-month-start: {current_month_str}, "
@@ -1564,6 +1560,10 @@ def generate_vipm_inline_line(
             f"<!-- vipm-month-start: {current_month_str}, "
             f"installs={total_installs}, stars={total_stars} -->"
         )
+
+    # Build output: base stats on the first line, deltas on a second line
+    if delta_parts:
+        body += "\n> 📈 " + "；".join(delta_parts)
 
     return f"{body}\n<!-- vipm-last-update: {today_str} -->\n{month_comment}"
 
