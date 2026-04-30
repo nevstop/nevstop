@@ -1502,7 +1502,7 @@ def generate_vipm_inline_line(
 
     Example output (daily + monthly non-zero):
       > 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): \\
-          16 packages, 34,469 installs, 69 stars
+          16 packages, 34,469 installs, 69 stars<br>
       > 📈 今日新增 installs: +123；Stars: +5；本月新增 installs: +1,000；Stars: +2
 
     When all deltas are zero the second line is omitted entirely.
@@ -1561,9 +1561,11 @@ def generate_vipm_inline_line(
             f"installs={total_installs}, stars={total_stars} -->"
         )
 
-    # Build output: base stats on the first line, deltas on a second line
+    # Build output: base stats on the first line, deltas on a second line.
+    # The trailing <br> is required so GitHub Markdown renders a visible line
+    # break between the two consecutive blockquote lines.
     if delta_parts:
-        body += "\n> 📈 " + "；".join(delta_parts)
+        body += "<br>\n> 📈 " + "；".join(delta_parts)
 
     return f"{body}\n<!-- vipm-last-update: {today_str} -->\n{month_comment}"
 
