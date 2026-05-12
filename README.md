@@ -22,7 +22,7 @@
 
 <!-- VIPM_INLINE_START -->
 > 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): 16 packages, 36,381 installs, 70 stars<br>
-> 📈 今日新增 installs: +143；本月新增 installs: +792
+> 📈 昨日新增 installs: +143；本月新增 installs: +792
 <!-- vipm-last-update: 2026-05-12 -->
 <!-- vipm-month-start: 2026-05, installs=35589, stars=70 -->
 <!-- VIPM_INLINE_END -->
