@@ -1487,22 +1487,24 @@ def generate_vipm_inline_line(
     across a midnight boundary.  When ``None`` the function falls back to
     ``datetime.now(BJT)`` (e.g. for unit tests that do not supply a time).
 
-    When *packages* is non-empty (fetch succeeded), three hidden HTML comments
-    are appended:
+    When *packages* is non-empty (fetch succeeded), two or three hidden HTML
+    comments are appended:
 
-    * ``<!-- vipm-last-update: YYYY-MM-DD -->`` – lets subsequent runs detect
-      same-day re-runs.
-    * ``<!-- vipm-yesterday-delta: installs=N, stars=N -->`` – stores the
-      computed 昨日新增 delta so same-day re-runs can reproduce the same value
-      without recomputing from live totals.
-    * ``<!-- vipm-month-start: YYYY-MM, installs=N, stars=N -->`` – records the
-      monthly baseline so that ``本月新增`` (monthly new) can be tracked.  The
-      month label follows *stats_date* (yesterday's data date in production),
-      preventing an early reset on month-boundary runs (e.g. the 1st day).
+    * ``<!-- vipm-last-update: YYYY-MM-DD -->`` – always written; lets
+      subsequent runs detect same-day re-runs.
+    * ``<!-- vipm-yesterday-delta: installs=N, stars=N -->`` – written when a
+      daily delta can be computed (i.e. prior totals were available).  Stores
+      the 昨日新增 delta so same-day re-runs can reproduce it without
+      recomputing from live totals.
+    * ``<!-- vipm-month-start: YYYY-MM, installs=N, stars=N -->`` – always
+      written; records the monthly baseline so that ``本月新增`` (monthly new)
+      can be tracked.  The month label follows *stats_date* (yesterday's data
+      date in production), preventing an early reset on month-boundary runs
+      (e.g. the 1st day).
 
-    Both comments are intentionally omitted when *packages* is empty, and
-    callers should skip the VIPM_INLINE section replacement on failure to
-    preserve any previously written baseline.
+    All hidden comments are omitted when *packages* is empty; callers should
+    skip the VIPM_INLINE section replacement on failure to preserve any
+    previously written baseline.
 
     *yesterday_delta* (optional ``(installs_delta, stars_delta)`` tuple) –
     when provided, these pre-computed values are used directly for the
@@ -1539,24 +1541,22 @@ def generate_vipm_inline_line(
     if yesterday_delta is not None:
         # Re-run: use stored delta so 昨日新增 stays stable
         computed_di, computed_ds = yesterday_delta
-    elif old_installs > 0 or old_stars > 0:
-        # Fresh run: compute delta from previous totals
-        computed_di = total_installs - old_installs
-        computed_ds = total_stars - old_stars
     else:
-        computed_di = None
-        computed_ds = None
+        # Fresh run: compute each field independently so that a missing/zero
+        # baseline for one field does not corrupt the other field's delta.
+        computed_di = (total_installs - old_installs) if old_installs > 0 else None
+        computed_ds = (total_stars - old_stars) if old_stars > 0 else None
 
-    if computed_di is not None:
-        _ds = computed_ds or 0
-        if computed_di != 0:
-            sign_i = "+" if computed_di >= 0 else ""
-            delta_parts.append(f"昨日新增 installs: {sign_i}{computed_di:,}")
-        if _ds != 0:
-            sign_s = "+" if _ds >= 0 else ""
-            delta_parts.append(f"Stars: {sign_s}{_ds:,}")
+    if computed_di is not None and computed_di != 0:
+        sign_i = "+" if computed_di >= 0 else ""
+        delta_parts.append(f"昨日新增 installs: {sign_i}{computed_di:,}")
+    _ds = computed_ds or 0
+    if _ds != 0:
+        sign_s = "+" if _ds >= 0 else ""
+        delta_parts.append(f"Stars: {sign_s}{_ds:,}")
 
-    # Always persist the computed/stored delta so re-runs can reproduce it.
+    # Persist the computed/stored delta only when at least installs baseline
+    # is known, so re-runs can reproduce a meaningful value.
     if computed_di is not None:
         yesterday_comment = (
             f"<!-- vipm-yesterday-delta: installs={computed_di}, stars={computed_ds or 0} -->"
@@ -1685,7 +1685,9 @@ def main():
     with open(README_PATH, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # Detect same-day re-runs: vipm-last-update == today.
+    # Detect same-day (or future-dated) re-runs: stored vipm-last-update is
+    # today or later.  The >= guard also handles the edge case of a clock skew
+    # or manually written future date without mis-classifying it as a fresh run.
     # On re-runs we use the stored 昨日新增 delta (from vipm-yesterday-delta)
     # so the displayed value stays stable even when live totals have changed.
     old_vipm_date = _parse_vipm_last_date(content)
