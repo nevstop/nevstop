@@ -1550,10 +1550,10 @@ def generate_vipm_inline_line(
     if computed_di is not None and computed_di != 0:
         sign_i = "+" if computed_di >= 0 else ""
         delta_parts.append(f"昨日新增 installs: {sign_i}{computed_di:,}")
-    _ds = computed_ds or 0
-    if _ds != 0:
-        sign_s = "+" if _ds >= 0 else ""
-        delta_parts.append(f"Stars: {sign_s}{_ds:,}")
+    display_ds = computed_ds or 0
+    if display_ds != 0:
+        sign_s = "+" if display_ds >= 0 else ""
+        delta_parts.append(f"Stars: {sign_s}{display_ds:,}")
 
     # Persist the computed/stored delta only when at least installs baseline
     # is known, so re-runs can reproduce a meaningful value.
