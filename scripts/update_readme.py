@@ -1477,6 +1477,8 @@ def generate_vipm_inline_line(
     month_start_installs=None,
     month_start_stars=None,
     now_bjt=None,
+    stats_date=None,
+    yesterday_delta=None,
 ):
     """Build a single inline text line for the LabVIEW developer description.
 
@@ -1485,25 +1487,34 @@ def generate_vipm_inline_line(
     across a midnight boundary.  When ``None`` the function falls back to
     ``datetime.now(BJT)`` (e.g. for unit tests that do not supply a time).
 
-    When *packages* is non-empty (fetch succeeded), two hidden HTML comments
-    are appended:
+    When *packages* is non-empty (fetch succeeded), two or three hidden HTML
+    comments are appended:
 
-    * ``<!-- vipm-last-update: YYYY-MM-DD -->`` – lets subsequent runs detect
-      same-day re-runs and suppress misleading near-zero daily deltas.
-    * ``<!-- vipm-month-start: YYYY-MM, installs=N, stars=N -->`` – records the
-      monthly baseline so that ``本月新增`` (monthly new) can be tracked.  On
-      the first run of a new month the *current* totals are written as the new
-      baseline (monthly delta is not shown yet).  On subsequent runs within the
-      same month the stored baseline is preserved.
+    * ``<!-- vipm-last-update: YYYY-MM-DD -->`` – always written; lets
+      subsequent runs detect same-day re-runs.
+    * ``<!-- vipm-yesterday-delta: installs=N, stars=N -->`` – written when a
+      daily delta can be computed (i.e. prior totals were available).  Stores
+      the 昨日新增 delta so same-day re-runs can reproduce it without
+      recomputing from live totals.
+    * ``<!-- vipm-month-start: YYYY-MM, installs=N, stars=N -->`` – always
+      written; records the monthly baseline so that ``本月新增`` (monthly new)
+      can be tracked.  The month label follows *stats_date* (yesterday's data
+      date in production), preventing an early reset on month-boundary runs
+      (e.g. the 1st day).
 
-    Both comments are intentionally omitted when *packages* is empty, and
-    callers should skip the VIPM_INLINE section replacement on failure to
-    preserve any previously written baseline.
+    All hidden comments are omitted when *packages* is empty; callers should
+    skip the VIPM_INLINE section replacement on failure to preserve any
+    previously written baseline.
+
+    *yesterday_delta* (optional ``(installs_delta, stars_delta)`` tuple) –
+    when provided, these pre-computed values are used directly for the
+    ``昨日新增`` display instead of computing from *old_installs*/*old_stars*.
+    Callers supply this on same-day re-runs to keep the displayed value stable.
 
     Example output (daily + monthly non-zero):
       > 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): \\
           16 packages, 34,469 installs, 69 stars<br>
-      > 📈 今日新增 installs: +123；Stars: +5；本月新增 installs: +1,000；Stars: +2
+      > 📈 昨日新增 installs: +123；Stars: +5；本月新增 installs: +1,000；Stars: +2
 
     When all deltas are zero the second line is omitted entirely.
     When a single delta field is zero that field is omitted from the second line.
@@ -1521,23 +1532,39 @@ def generate_vipm_inline_line(
     )
 
     # ── Daily delta ─────────────────────────────────────────────────────────
-    # Collect delta parts; skip fields with zero delta
+    _now = now_bjt if now_bjt is not None else datetime.now(BJT)
+    _stats_date = stats_date if stats_date is not None else (_now.date() - timedelta(days=1))
+    today_str = _now.strftime("%Y-%m-%d")
+    current_month_str = _stats_date.strftime("%Y-%m")
+
     delta_parts = []
-    if old_installs > 0 or old_stars > 0:
-        delta_installs = total_installs - old_installs
-        delta_stars = total_stars - old_stars
-        if delta_installs != 0:
-            sign_i = "+" if delta_installs >= 0 else ""
-            delta_parts.append(f"今日新增 installs: {sign_i}{delta_installs:,}")
-        if delta_stars != 0:
-            sign_s = "+" if delta_stars >= 0 else ""
-            delta_parts.append(f"Stars: {sign_s}{delta_stars:,}")
+    if yesterday_delta is not None:
+        # Re-run: use stored delta so 昨日新增 stays stable
+        computed_di, computed_ds = yesterday_delta
+    else:
+        # Fresh run: compute each field independently so that a missing/zero
+        # baseline for one field does not corrupt the other field's delta.
+        computed_di = (total_installs - old_installs) if old_installs > 0 else None
+        computed_ds = (total_stars - old_stars) if old_stars > 0 else None
+
+    if computed_di is not None and computed_di != 0:
+        sign_i = "+" if computed_di >= 0 else ""
+        delta_parts.append(f"昨日新增 installs: {sign_i}{computed_di:,}")
+    display_ds = computed_ds or 0
+    if display_ds != 0:
+        sign_s = "+" if display_ds >= 0 else ""
+        delta_parts.append(f"Stars: {sign_s}{display_ds:,}")
+
+    # Persist the computed/stored delta only when at least installs baseline
+    # is known, so re-runs can reproduce a meaningful value.
+    if computed_di is not None:
+        yesterday_comment = (
+            f"<!-- vipm-yesterday-delta: installs={computed_di}, stars={computed_ds or 0} -->"
+        )
+    else:
+        yesterday_comment = ""
 
     # ── Monthly delta ────────────────────────────────────────────────────────
-    _now = now_bjt if now_bjt is not None else datetime.now(BJT)
-    today_str = _now.strftime("%Y-%m-%d")
-    current_month_str = _now.strftime("%Y-%m")
-
     if month_start_installs is not None:
         # Existing baseline for this month — compute and show delta
         month_delta_installs = total_installs - month_start_installs
@@ -1567,7 +1594,11 @@ def generate_vipm_inline_line(
     if delta_parts:
         body += "<br>\n> 📈 " + "；".join(delta_parts)
 
-    return f"{body}\n<!-- vipm-last-update: {today_str} -->\n{month_comment}"
+    hidden = f"<!-- vipm-last-update: {today_str} -->"
+    if yesterday_comment:
+        hidden += f"\n{yesterday_comment}"
+    hidden += f"\n{month_comment}"
+    return f"{body}\n{hidden}"
 
 
 def _parse_vipm_last_date(readme_content):
@@ -1580,6 +1611,25 @@ def _parse_vipm_last_date(readme_content):
         readme_content,
     )
     return match.group(1) if match else None
+
+
+def _parse_vipm_yesterday_delta(readme_content):
+    """Extract stored 昨日新增 delta values from the hidden vipm-yesterday-delta comment.
+
+    The values were written by the first run of the day so that same-day
+    re-runs can reproduce the same 昨日新增 display without recomputing from
+    live totals (which would give a near-zero spurious delta).
+
+    Returns ``(installs_delta, stars_delta)`` or ``(None, None)`` when absent.
+    """
+    match = re.search(
+        r"<!-- VIPM_INLINE_START -->[\s\S]*?"
+        r"<!-- vipm-yesterday-delta: installs=(-?\d+), stars=(-?\d+) -->",
+        readme_content,
+    )
+    if not match:
+        return None, None
+    return int(match.group(1)), int(match.group(2))
 
 
 def _parse_vipm_month_start(readme_content):
@@ -1621,11 +1671,10 @@ def main():
 
     The CAT section is now maintained by ``scripts/update_cat.py``.
 
-    When this script is triggered manually on the same calendar day it already
-    ran, the VIPM delta ("今日新增") is suppressed to avoid showing a
-    misleading near-zero change.  The stored ``vipm-last-update`` date
-    (written as a hidden HTML comment by ``generate_vipm_inline_line`` only on
-    successful VIPM fetches) is used to detect such same-day re-runs.
+    On same-day re-runs the 昨日新增 (yesterday's delta) is held stable by
+    reading the value stored in the ``vipm-yesterday-delta`` hidden comment
+    that was written during the first run of the day.  本月新增 (monthly
+    delta) is always recomputed fresh from the monthly baseline.
     """
     repos = get_owned_repos()
     language_totals = get_language_totals(repos)
@@ -1636,18 +1685,29 @@ def main():
     with open(README_PATH, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # Detect same-day re-runs: if the stored VIPM date is today or later, the
-    # delta would reflect only an intra-day change and would be misleading.
+    # Detect same-day (or future-dated) re-runs: stored vipm-last-update is
+    # today or later.  The >= guard also handles the edge case of a clock skew
+    # or manually written future date without mis-classifying it as a fresh run.
+    # On re-runs we use the stored 昨日新增 delta (from vipm-yesterday-delta)
+    # so the displayed value stays stable even when live totals have changed.
     old_vipm_date = _parse_vipm_last_date(content)
     is_vipm_rerun = old_vipm_date is not None and old_vipm_date >= today.isoformat()
     if is_vipm_rerun:
-        print(f"ℹ️  VIPM already updated for today ({old_vipm_date}) — skipping delta")
+        stored_di, stored_ds = _parse_vipm_yesterday_delta(content)
+        yesterday_delta = (stored_di, stored_ds) if stored_di is not None else None
+        print(
+            f"ℹ️  VIPM already updated for today ({old_vipm_date}) — "
+            "using stored 昨日新增 delta"
+        )
+    else:
+        yesterday_delta = None
 
     # Determine monthly baseline for 本月新增 tracking.
     # - Same month as stored → pass stored baseline so delta accumulates.
     # - Different month (or no stored data) → pass None so current totals are
     #   recorded as the new baseline (monthly delta shown from next run onward).
-    current_month_str = today.strftime("%Y-%m")
+    stats_date = today - timedelta(days=1)
+    current_month_str = stats_date.strftime("%Y-%m")
     stored_month, stored_month_installs, stored_month_stars = _parse_vipm_month_start(content)
     if vipm_packages and stored_month == current_month_str:
         month_start_i = stored_month_installs
@@ -1668,6 +1728,8 @@ def main():
             month_start_installs=month_start_i,
             month_start_stars=month_start_s,
             now_bjt=now_bjt,
+            stats_date=stats_date,
+            yesterday_delta=yesterday_delta,
         )
         content = replace_section(content, "VIPM_INLINE", vipm_line)
     else:
