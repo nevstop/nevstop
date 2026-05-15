@@ -20,10 +20,10 @@
 ### 👋 Hi, I'm **NEVSTOP**
 
 <!-- VIPM_INLINE_START -->
-> 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): 16 packages, 36,605 installs, 70 stars<br>
-> 📈 昨日新增 installs: +67；本月新增 installs: +1,016
-<!-- vipm-last-update: 2026-05-15 -->
-<!-- vipm-yesterday-delta: installs=67, stars=0 -->
+> 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): 16 packages, 36,679 installs, 70 stars<br>
+> 📈 昨日新增 installs: +74；本月新增 installs: +1,090
+<!-- vipm-last-update: 2026-05-16 -->
+<!-- vipm-yesterday-delta: installs=74, stars=0 -->
 <!-- vipm-month-start: 2026-05, installs=35589, stars=70 -->
 <!-- VIPM_INLINE_END -->
 
@@ -40,8 +40,8 @@
 <pre style="display:inline-block;margin:0;text-align:left;font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;line-height:1.2;">
 Most Used Language (all owned repos)
 
-LabVIEW     █████████████████░   91.7%
-Python      █░░░░░░░░░░░░░░░░░    4.1%
+LabVIEW     ████████████████░░   91.6%
+Python      █░░░░░░░░░░░░░░░░░    4.2%
 HTML        ░░░░░░░░░░░░░░░░░░    1.6%
 C           ░░░░░░░░░░░░░░░░░░    1.1%
 C#          ░░░░░░░░░░░░░░░░░░    0.5%
@@ -54,7 +54,7 @@ Inno Setup  ░░░░░░░░░░░░░░░░░░    0.2%
 ---
 
 <sub><!-- UPDATE_TIME_START -->
-🕐 最近更新: 2026-05-15 01:47 (北京时间)
+🕐 最近更新: 2026-05-16 01:45 (北京时间)
 <!-- UPDATE_TIME_END --></sub>
 
 </div>
