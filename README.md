@@ -20,10 +20,10 @@
 ### 👋 Hi, I'm **NEVSTOP**
 
 <!-- VIPM_INLINE_START -->
-> 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): 16 packages, 41,423 installs, 75 stars<br>
-> 📈 昨日新增 installs: +108；本月新增 installs: +680
-<!-- vipm-last-update: 2026-07-10 -->
-<!-- vipm-yesterday-delta: installs=108, stars=0 -->
+> 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): 16 packages, 41,504 installs, 75 stars<br>
+> 📈 昨日新增 installs: +81；本月新增 installs: +761
+<!-- vipm-last-update: 2026-07-11 -->
+<!-- vipm-yesterday-delta: installs=81, stars=0 -->
 <!-- vipm-month-start: 2026-07, installs=40743, stars=75 -->
 <!-- VIPM_INLINE_END -->
 
@@ -40,12 +40,12 @@
 <pre style="display:inline-block;margin:0;text-align:left;font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;line-height:1.2;">
 Most Used Language (all owned repos)
 
-LabVIEW     ███████████████░░░   81.8%
-TypeScript  █░░░░░░░░░░░░░░░░░    7.4%
-Python      █░░░░░░░░░░░░░░░░░    5.8%
-JavaScript  ░░░░░░░░░░░░░░░░░░    1.5%
-HTML        ░░░░░░░░░░░░░░░░░░    0.9%
-C           ░░░░░░░░░░░░░░░░░░    0.9%
+LabVIEW     ██████████████░░░░   76.9%
+TypeScript  █░░░░░░░░░░░░░░░░░    7.0%
+HTML        █░░░░░░░░░░░░░░░░░    6.9%
+Python      █░░░░░░░░░░░░░░░░░    5.5%
+JavaScript  ░░░░░░░░░░░░░░░░░░    1.4%
+C           ░░░░░░░░░░░░░░░░░░    0.8%
 VBScript    ░░░░░░░░░░░░░░░░░░    0.5%
 C#          ░░░░░░░░░░░░░░░░░░    0.4%
 </pre>
@@ -54,7 +54,7 @@ C#          ░░░░░░░░░░░░░░░░░░    0.4%
 ---
 
 <sub><!-- UPDATE_TIME_START -->
-🕐 最近更新: 2026-07-10 01:47 (北京时间)
+🕐 最近更新: 2026-07-11 01:46 (北京时间)
 <!-- UPDATE_TIME_END --></sub>
 
 </div>
