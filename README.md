@@ -20,10 +20,10 @@
 ### 👋 Hi, I'm **NEVSTOP**
 
 <!-- VIPM_INLINE_START -->
-> 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): 16 packages, 42,767 installs, 75 stars<br>
-> 📈 昨日新增 installs: +71；本月新增 installs: +2,024
-<!-- vipm-last-update: 2026-07-26 -->
-<!-- vipm-yesterday-delta: installs=71, stars=0 -->
+> 🔧 LabVIEW 开发者：[VIPM](https://www.vipm.io/publisher/nevstop/): 16 packages, 42,787 installs, 75 stars<br>
+> 📈 昨日新增 installs: +20；本月新增 installs: +2,044
+<!-- vipm-last-update: 2026-07-27 -->
+<!-- vipm-yesterday-delta: installs=20, stars=0 -->
 <!-- vipm-month-start: 2026-07, installs=40743, stars=75 -->
 <!-- VIPM_INLINE_END -->
 
@@ -54,7 +54,7 @@ VBScript    ░░░░░░░░░░░░░░░░░░    0.5%
 ---
 
 <sub><!-- UPDATE_TIME_START -->
-🕐 最近更新: 2026-07-26 01:31 (北京时间)
+🕐 最近更新: 2026-07-27 01:32 (北京时间)
 <!-- UPDATE_TIME_END --></sub>
 
 </div>
