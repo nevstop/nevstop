@@ -2,20 +2,20 @@
 
 <!-- CAT_START -->
 <pre style="display:inline-block;margin:0;text-align:left;font-family:'Cascadia Mono','Consolas','Menlo','Monaco',monospace;line-height:1.2;">
- 2️⃣0️⃣2️⃣6️⃣➖1️⃣1️⃣➖2️⃣3️⃣   ☁️
+ 2️⃣0️⃣2️⃣6️⃣➖1️⃣1️⃣➖2️⃣4️⃣   ☁️
 
- /\🎩/\      /\_/\ 
-( 👽 )      ( *.* )
- / >~ 🐍     / 🔍   
+ /\🎩/\  
+( o.o ) 
+ \ <~ C#
 🐙："Multi-branch"
 
-🌱 轻松模式 | 昨天提交了 5 个 commit
-📌 关闭了 1 个 Issue
-🧩 连续提交 16 天 | 活跃节奏 ☁️
-📅 日历爪印: ••••••••••••••+2
-📊 本周提交 [░░░░░░░░░░░░] 0/100
+👊 干劲模式 | 昨天提交了 14 个 commit
+📌 关闭了 1 个 PR
+🧩 连续提交 17 天 | 活跃节奏 ☁️
+📅 日历爪印: ••••••••••••••+3
+📊 本周提交 [████░░░░░░░░] 33/100
 </pre>
-<!-- Yesterday Stats (昨日数据统计): date=2026-11-22, commits=5, closed PRs=0, closed issues=1, PR authors (PR提交者)=nevstop, issue authors (issue提交者)=nevstop, hourly={}, streak=16, hat=🎩, streakPaw=••••••••••••••+2, week=0/100, weekBar=░░░░░░░░░░░░, hand=🐍, rhythm=☁️, roleFlags=[discussion_cat=false, fork_cat=false, merge_cat=false, review_cat=true, star_cat=false, wiki_cat=false], animalFlags=[bee=false, fox=false, mouse=false, octopus=true, penguin=false], easter=[alien_cat=true, birthday_cake_cat=false, ghost_cat=false, midnight_cat=false, milestone_cat=false, ninja_cat=true, party_cat=false] -->
+<!-- Yesterday Stats (昨日数据统计): date=2026-11-23, commits=14, closed PRs=1, closed issues=0, PR authors (PR提交者)=nevstop, issue authors (issue提交者)=wulei2LabVIEW, hourly={}, streak=17, hat=🎩, streakPaw=••••••••••••••+3, week=33/100, weekBar=████░░░░░░░░, hand=C#, rhythm=☁️, roleFlags=[discussion_cat=false, fork_cat=false, merge_cat=false, review_cat=false, star_cat=false, wiki_cat=false], animalFlags=[bee=false, fox=false, mouse=false, octopus=true, penguin=false], easter=[alien_cat=false, birthday_cake_cat=false, ghost_cat=false, midnight_cat=false, milestone_cat=false, ninja_cat=true, party_cat=false] -->
 <!-- CAT_END -->
 
 ### 👋 Hi, I'm **NEVSTOP**
